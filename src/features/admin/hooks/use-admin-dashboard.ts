@@ -134,7 +134,7 @@ async function fetchAdminDashboard(): Promise<AdminDashboardData> {
       },
       {
         title: "Clientes Ativos",
-        value: Number(s.activeUsers ?? s.activeClients ?? activeUsersCount).toLocaleString("pt-BR"),
+        value: Number(s.activeUsers ?? s.activeClients ?? paidUsers).toLocaleString("pt-BR"),
         change: "",
         trend: "up",
         icon: Sparkles,

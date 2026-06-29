@@ -149,7 +149,12 @@ const Cadastro = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate("/dashboard", { replace: true });
+      const pendingPlan = sessionStorage.getItem("pendingPaymentPlan");
+      if (pendingPlan) {
+        navigate(`/pagamento?plan=${pendingPlan}`, { replace: true });
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
