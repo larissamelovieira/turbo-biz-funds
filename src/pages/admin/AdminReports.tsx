@@ -484,19 +484,6 @@ export default function AdminReports() {
             )}
           </ChartContainer>
 
-          <ChartContainer
-            title="Receita Mensal"
-            description="Evolução da receita bruta (MRR), despesas e lucro líquido"
-          >
-            {data?.revenueChart ? (
-              <RevenueChart data={data.revenueChart} />
-            ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            )}
-          </ChartContainer>
-
           {/* Revenue Table */}
           {data?.revenueData && data.revenueData.length > 0 && (
             <Card className="border-0 shadow-sm">
