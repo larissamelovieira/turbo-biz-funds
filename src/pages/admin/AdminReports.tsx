@@ -484,43 +484,35 @@ export default function AdminReports() {
             )}
           </ChartContainer>
 
-          {/* Revenue Table */}
+          {/* Subscriptions Table */}
           {data?.revenueData && data.revenueData.length > 0 && (
             <Card className="border-0 shadow-sm">
               <CardHeader>
-                <CardTitle className="text-base">Dados Detalhados</CardTitle>
+                <CardTitle className="text-base">Assinaturas por Mês</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
-                <div className="min-w-[640px] space-y-4">
-                  <div className="grid grid-cols-8 gap-4 text-sm font-medium text-muted-foreground border-b pb-2">
-                    <div className="col-span-1">Mês</div>
-                    <div className="col-span-1">Receita</div>
-                    <div className="col-span-1">Despesas</div>
-                    <div className="col-span-1">Lucro</div>
-                    <div className="col-span-1">MRR</div>
-                    <div className="col-span-1">Novas Assin.</div>
-                    <div className="col-span-1">Cancel.</div>
-                    <div className="col-span-1">Churn</div>
+                <div className="min-w-[400px] space-y-4">
+                  <div className="grid grid-cols-4 gap-4 text-sm font-medium text-muted-foreground border-b pb-2">
+                    <div>Mês</div>
+                    <div>Novas Assinaturas</div>
+                    <div>Cancelamentos</div>
+                    <div>Churn</div>
                   </div>
                   {data.revenueData.map((item, i) => (
-                    <div key={i} className="grid grid-cols-8 gap-4 text-sm items-center">
-                      <div className="col-span-1 font-medium">{item.month}</div>
-                      <div className="col-span-1 text-blue-600">R$ {item.revenue.toLocaleString("pt-BR")}</div>
-                      <div className="col-span-1 text-red-500">R$ {item.expenses.toLocaleString("pt-BR")}</div>
-                      <div className="col-span-1 text-emerald-600">R$ {item.netRevenue.toLocaleString("pt-BR")}</div>
-                      <div className="col-span-1">R$ {item.mrr.toLocaleString("pt-BR")}</div>
-                      <div className="col-span-1">
+                    <div key={i} className="grid grid-cols-4 gap-4 text-sm items-center">
+                      <div className="font-medium">{item.month}</div>
+                      <div>
                         <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
                           +{item.newSubscriptions}
                         </Badge>
                       </div>
-                      <div className="col-span-1">
-                        <Badge variant="destructive" className="bg-red-50">
+                      <div>
+                        <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">
                           -{item.cancellations}
                         </Badge>
                       </div>
-                      <div className="col-span-1">
+                      <div>
                         <Badge variant="outline">{item.churnRate.toFixed(1)}%</Badge>
                       </div>
                     </div>
