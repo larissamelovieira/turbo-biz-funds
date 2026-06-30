@@ -230,7 +230,8 @@ async function fetchRevenueData(period: PeriodType): Promise<RevenueDataPoint[]>
 
 async function fetchRevenueChart(period: PeriodType): Promise<RevenueChartData> {
   const year = new Date().getFullYear();
-  const data = await api.get<any>(`${apiEndpoints.admin.revenue}/chart?period=${period}&year=${year}`);
+  const res = await api.get<any>(`${apiEndpoints.admin.revenue}/chart?period=${period}&year=${year}`);
+  const data = res?.data ?? res;
   return {
     labels: data?.labels ?? MOCK_REVENUE_CHART.labels,
     datasets: {
@@ -257,7 +258,7 @@ async function fetchUserGrowth(period: PeriodType): Promise<UserGrowthDataPoint[
 
 async function fetchPlanDistribution(period: PeriodType): Promise<PlanDistributionData[]> {
   const data = await api.get<any>(`${apiEndpoints.admin.plans}/distribution?period=${period}`);
-  const raw = toArray<any>(data?.plans ?? data);
+  const raw = toArray<any>(data?.data ?? data?.plans ?? data);
   return raw.map((p: any) => ({
     planId: p.planId ?? p.id ?? "",
     planName: p.planName ?? p.name ?? "",
@@ -283,7 +284,7 @@ async function fetchChurnData(period: PeriodType): Promise<ChurnDataPoint[]> {
 async function fetchCashflow(): Promise<CashflowEntry[]> {
   const year = new Date().getFullYear();
   const data = await api.get<any>(`${apiEndpoints.admin.cashflow}?year=${year}`);
-  const raw = toArray<any>(data?.entries ?? data);
+  const raw = toArray<any>(data?.data ?? data?.entries ?? data);
   return raw.map((e: any) => ({
     id: e.id ?? "",
     date: e.date ?? "",

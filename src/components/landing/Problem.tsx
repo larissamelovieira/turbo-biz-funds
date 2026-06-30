@@ -223,9 +223,6 @@ const Problem = memo(() => {
               <h2 className="text-3xl md:text-5xl font-black text-white mb-5 leading-tight tracking-tight">
                 {t("landing", "organizedLifeTitle")}
               </h2>
-              <p className="text-base md:text-lg text-white/60 mb-4 leading-relaxed">
-                {t("landing", "organizedLifeSubtitle")}
-              </p>
               <p className="text-lg md:text-xl font-semibold text-white/85">
                 {t("landing", "organizedLifeClosing")}
               </p>
