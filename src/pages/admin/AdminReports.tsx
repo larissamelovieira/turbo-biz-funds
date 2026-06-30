@@ -121,6 +121,32 @@ const RevenueChart = ({ data }: { data: { labels: string[]; datasets: { revenue:
   );
 };
 
+const SubscriptionsEvolutionChart = ({ data }: { data: { month: string; newSubscriptions: number; cancellations: number; mrr: number }[] }) => {
+  const chartData = data.map(d => ({
+    name: d.month,
+    assinantes: d.newSubscriptions,
+    cancelamentos: d.cancellations,
+    mrr: d.mrr,
+  }));
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <BarChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+        <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#6b7280" }} tickLine={false} axisLine={false} />
+        <YAxis tick={{ fontSize: 12, fill: "#6b7280" }} tickLine={false} axisLine={false} allowDecimals={false} />
+        <Tooltip
+          contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: 12 }}
+          formatter={(value: number, name: string) => [value, name === "mrr" ? `MRR R$${value}` : value]}
+        />
+        <Legend />
+        <Bar dataKey="assinantes" name="Novos Assinantes" fill="#10b981" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="cancelamentos" name="Cancelamentos" fill="#ef4444" radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+};
+
 const UsersGrowthChart = ({ data }: { data: { period: string; totalUsers: number; newUsers: number; activeUsers: number }[] }) => {
   const chartData = data.map(d => ({
     name: d.period.slice(-2),
@@ -442,6 +468,19 @@ export default function AdminReports() {
             ) : (
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
                 <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            )}
+          </ChartContainer>
+
+          <ChartContainer
+            title="Evolução de Assinaturas"
+            description="Novos assinantes vs cancelamentos por período"
+          >
+            {data?.revenueData && data.revenueData.length > 0 ? (
+              <SubscriptionsEvolutionChart data={data.revenueData} />
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
+                Nenhum dado disponível
               </div>
             )}
           </ChartContainer>
