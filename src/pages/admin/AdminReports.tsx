@@ -92,23 +92,35 @@ const ChartContainer = ({ title, description, children }: { title: string; descr
 const RevenueChart = ({ data }: { data: { labels: string[]; datasets: { revenue: number[]; expenses: number[]; netRevenue: number[] } } }) => {
   const chartData = data.labels.map((label, i) => ({
     name: label,
-    receita: data.datasets.revenue[i],
-    despesas: data.datasets.expenses[i],
-    lucro: data.datasets.netRevenue[i],
+    receita: data.datasets.revenue[i] ?? 0,
+    despesas: data.datasets.expenses[i] ?? 0,
+    lucro: data.datasets.netRevenue[i] ?? 0,
   }));
+
+  const hasData = chartData.some(d => d.receita > 0 || d.despesas > 0);
+
+  if (!hasData) {
+    return (
+      <div className="h-[300px] flex flex-col items-center justify-center gap-2 text-muted-foreground">
+        <TrendingUp className="h-8 w-8 opacity-30" />
+        <p className="text-sm">Sem receita registrada no período</p>
+        <p className="text-xs opacity-60">Os dados financeiros aparecerão quando houver pagamentos processados</p>
+      </div>
+    );
+  }
 
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
         <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#6b7280" }} tickLine={false} axisLine={false} />
-        <YAxis 
-          tick={{ fontSize: 12, fill: "#6b7280" }} 
-          tickLine={false} 
+        <YAxis
+          tick={{ fontSize: 12, fill: "#6b7280" }}
+          tickLine={false}
           axisLine={false}
           tickFormatter={(v) => `R$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`}
         />
-        <Tooltip 
+        <Tooltip
           contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: 12 }}
           formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR")}`, ""]}
         />
@@ -460,6 +472,19 @@ export default function AdminReports() {
         {/* Revenue Tab */}
         <TabsContent value="revenue" className="space-y-4">
           <ChartContainer
+            title="Evolução de Assinaturas"
+            description="Novos assinantes vs cancelamentos por mês"
+          >
+            {data?.revenueData && data.revenueData.length > 0 ? (
+              <SubscriptionsEvolutionChart data={data.revenueData} />
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
+                Nenhum dado disponível
+              </div>
+            )}
+          </ChartContainer>
+
+          <ChartContainer
             title="Receita Mensal"
             description="Evolução da receita bruta (MRR), despesas e lucro líquido"
           >
@@ -468,19 +493,6 @@ export default function AdminReports() {
             ) : (
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
                 <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            )}
-          </ChartContainer>
-
-          <ChartContainer
-            title="Evolução de Assinaturas"
-            description="Novos assinantes vs cancelamentos por período"
-          >
-            {data?.revenueData && data.revenueData.length > 0 ? (
-              <SubscriptionsEvolutionChart data={data.revenueData} />
-            ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
-                Nenhum dado disponível
               </div>
             )}
           </ChartContainer>
