@@ -397,7 +397,7 @@ const STEPS: TutorialStep[] = [
     label: "Pronto!",
     title: "Você está pronto para começar!",
     subtitle: "Boas finanças começam aqui",
-    description: "Todas as funcionalidades foram apresentadas. Comece adicionando sua primeira transação ou configurando uma meta. Boas finanças começam agora!",
+    description: "Você já conhece todas as funcionalidades do Doutor Cash. Agora é hora de começar: registre sua primeira transação ou defina uma meta e assuma o controle das suas finanças.",
     features: [
       "Tutorial salvo — não aparece novamente",
       "Acesse o menu lateral para navegar",
