@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, ArrowLeftRight, Tag, Target, RefreshCw,
   CreditCard, MessageCircle, Settings, ChevronRight, ChevronLeft,
-  X, CheckCircle, Sparkles, ArrowRight,
+  X, CheckCircle, Sparkles, ArrowRight, ShoppingCart, DollarSign,
+  Repeat2, Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,9 +24,111 @@ interface TutorialStep {
   bgGradient: string;
   visual: React.ReactNode;
   route: string;
+  leftTitle?: string;
+  leftSubtitle?: string;
+  customContent?: React.ReactNode;
 }
 
 /* ── Visuals ──────────────────────────────────────────────── */
+
+function WelcomeWhatsAppVisual() {
+  return (
+    <div className="w-full flex flex-col gap-2 p-1">
+      <div className="bg-white/10 rounded-xl p-2 backdrop-blur-sm flex items-center gap-2 mb-1">
+        <div className="w-7 h-7 rounded-full bg-[#25D366] flex items-center justify-center shrink-0">
+          <MessageCircle className="w-4 h-4 text-white" />
+        </div>
+        <div>
+          <div className="text-white text-xs font-semibold">Doutor Cash</div>
+          <div className="text-white/50 text-[10px]">online agora</div>
+        </div>
+        <div className="ml-auto w-2 h-2 rounded-full bg-[#25D366]" />
+      </div>
+      <div className="flex justify-start">
+        <div className="bg-white/15 backdrop-blur-sm rounded-2xl rounded-tl-sm px-3 py-2 text-white text-xs max-w-[85%]">
+          Como posso te ajudar? 😊
+        </div>
+      </div>
+      <div className="flex justify-end">
+        <div className="bg-[#25D366]/40 backdrop-blur-sm rounded-2xl rounded-tr-sm px-3 py-2 text-white text-xs max-w-[85%]">
+          Gastei R$ 50 no supermercado
+        </div>
+      </div>
+      <div className="flex justify-start">
+        <div className="bg-white/15 backdrop-blur-sm rounded-2xl rounded-tl-sm px-3 py-2 text-white text-xs max-w-[90%]">
+          ✅ Registro realizado!<br />
+          <span className="text-white/70">Categoria: Alimentação · R$ 50,00</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WelcomeCustomContent() {
+  const whatsappNumber = import.meta.env.VITE_WHATSAPP_NUMBER ?? "5511999999999";
+  const whatsappUrl = `https://wa.me/${whatsappNumber}`;
+
+  const canCadastrar = [
+    { icon: ShoppingCart, label: "Gastos e despesas" },
+    { icon: DollarSign, label: "Renda e recebimentos" },
+    { icon: Repeat2, label: "Tipos de transações" },
+    { icon: Sparkles, label: "E muito mais!" },
+  ];
+
+  const exemplos = [
+    "\"Gastei R$ 50 no supermercado\"",
+    "\"Renda de R$ 1.000 mensal\"",
+    "\"Paguei R$ 120 de energia\"",
+    "\"Recebi R$ 300 de um cliente\"",
+  ];
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Você pode cadastrar:</p>
+          <div className="space-y-2">
+            {canCadastrar.map(({ icon: Icon, label }) => (
+              <div key={label} className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-[#25D366]/15 flex items-center justify-center shrink-0">
+                  <Icon className="w-3 h-3 text-[#25D366]" />
+                </div>
+                <span className="text-sm text-gray-700">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Exemplos de mensagens:</p>
+          <div className="space-y-1.5">
+            {exemplos.map((ex) => (
+              <p key={ex} className="text-xs text-gray-500 leading-snug">{ex}</p>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 text-xs text-gray-500">
+        <Shield className="w-3.5 h-3.5 text-[#25D366] shrink-0" />
+        <span>Seguro, rápido e 100% pelo WhatsApp.</span>
+      </div>
+
+      <a
+        href={whatsappUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#25D366] hover:bg-[#1ebe5d] transition-colors text-white text-sm font-bold"
+      >
+        <MessageCircle className="w-4 h-4" />
+        Iniciar conversa no WhatsApp
+      </a>
+
+      <p className="text-[11px] text-gray-400 text-center">
+        Não se preocupe, você pode voltar aqui sempre que quiser.
+      </p>
+    </div>
+  );
+}
 
 function DashboardVisual() {
   return (
@@ -240,20 +343,19 @@ function ConfigVisual() {
 const STEPS: TutorialStep[] = [
   {
     id: "welcome",
-    icon: Sparkles,
+    icon: MessageCircle,
     label: "Início",
-    title: "Bem-vindo ao DoutorCash!",
-    subtitle: "Controle financeiro inteligente",
-    description: "Este tour rápido vai mostrar tudo que você pode fazer aqui. Navegue pelos passos ou pule a qualquer momento.",
-    features: [
-      "Visão completa das suas finanças",
-      "Metas, categorias e recorrências",
-      "Integração com WhatsApp",
-    ],
-    accentColor: "#1a3799",
-    bgGradient: "from-[#06091c] via-[#08086e] to-[#1a3799]",
-    visual: <DashboardVisual />,
+    title: "Tudo começa no WhatsApp",
+    subtitle: "Fale com o Doutor Cash como se fosse uma conversa normal. É simples, rápido e prático.",
+    description: "",
+    features: [],
+    accentColor: "#25D366",
+    bgGradient: "from-[#052e16] via-[#065f46] to-[#128C7E]",
+    visual: <WelcomeWhatsAppVisual />,
     route: "/dashboard",
+    leftTitle: "Converse com o Doutor Cash pelo WhatsApp",
+    leftSubtitle: "É por lá que você cadastra gastos, despesas, renda e muito mais!",
+    customContent: <WelcomeCustomContent />,
   },
   {
     id: "dashboard",
@@ -479,6 +581,23 @@ export function UserTutorial({ onComplete, onSkip }: UserTutorialProps) {
             <span className="text-white/80 text-xs font-medium">doutorcash</span>
           </div>
 
+          {current.leftTitle && (
+            <div className={cn("transition-opacity duration-300", animating ? "opacity-0" : "opacity-100")}>
+              <h3 className="text-white font-bold text-lg leading-snug mb-1">
+                {current.leftTitle.includes("WhatsApp") ? (
+                  <>
+                    {current.leftTitle.split("WhatsApp")[0]}
+                    <span className="text-[#25D366]">WhatsApp</span>
+                    {current.leftTitle.split("WhatsApp")[1]}
+                  </>
+                ) : current.leftTitle}
+              </h3>
+              {current.leftSubtitle && (
+                <p className="text-white/60 text-xs leading-relaxed">{current.leftSubtitle}</p>
+              )}
+            </div>
+          )}
+
           <div className={cn(
             "flex-1 flex items-center my-4 transition-opacity duration-300",
             animating ? "opacity-0" : "opacity-100"
@@ -533,23 +652,28 @@ export function UserTutorial({ onComplete, onSkip }: UserTutorialProps) {
               {current.subtitle}
             </p>
 
-            <p className="text-sm text-gray-600 leading-relaxed mb-5">
-              {current.description}
-            </p>
-
-            <div className="space-y-2.5">
-              {current.features.map((f, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div
-                    className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: `${current.accentColor}20` }}
-                  >
-                    <CheckCircle className="w-3 h-3" style={{ color: current.accentColor }} />
-                  </div>
-                  <span className="text-sm text-gray-700">{f}</span>
+            {current.customContent ? (
+              current.customContent
+            ) : (
+              <>
+                <p className="text-sm text-gray-600 leading-relaxed mb-5">
+                  {current.description}
+                </p>
+                <div className="space-y-2.5">
+                  {current.features.map((f, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div
+                        className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: `${current.accentColor}20` }}
+                      >
+                        <CheckCircle className="w-3 h-3" style={{ color: current.accentColor }} />
+                      </div>
+                      <span className="text-sm text-gray-700">{f}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            )}
           </div>
 
           {/* Footer */}
