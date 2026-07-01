@@ -261,7 +261,7 @@ const STEPS: TutorialStep[] = [
     label: "Dashboard",
     title: "Visão geral das finanças",
     subtitle: "Saldo · Receitas · Despesas · Gráfico",
-    description: "O Dashboard reúne tudo num só lugar: saldo atual, total de entradas e saídas do mês, e um gráfico de evolução para você acompanhar a tendência.",
+    description: "O Dashboard centraliza todas as suas informações financeiras em um único lugar. Acompanhe seu saldo atual, receitas, despesas, gráficos de desempenho e identifique para onde seu dinheiro está indo, facilitando decisões financeiras mais inteligentes.",
     features: [
       "Cards de saldo, receitas e despesas",
       "Gráfico mensal interativo",
