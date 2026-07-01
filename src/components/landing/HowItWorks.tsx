@@ -3,94 +3,107 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
-// Card 1 — Registro automático (WhatsApp chat simulation)
-const RegistroCard = memo(() => (
+const Card1 = memo(() => (
   <div className="bg-white rounded-2xl p-5 shadow-sm flex flex-col gap-3 h-full">
-    <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+    <div className="flex items-center gap-2 mb-1">
+      <span className="w-7 h-7 bg-[#1B4DBF] rounded-full flex items-center justify-center text-white font-black text-sm flex-shrink-0">1</span>
+      <span className="text-sm font-bold text-gray-800">Envie suas despesas e receitas</span>
+    </div>
+    <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex-1">
       <div className="text-xs text-gray-400 mb-2 font-medium">WhatsApp</div>
       <div className="space-y-2">
         <div className="flex justify-end">
-          <div className="bg-[#dcf8c6] rounded-2xl rounded-tr-sm px-3 py-2 text-xs text-gray-800 max-w-[85%]">
-            Você enviou: "Gastei 45 no mercado"
+          <div className="bg-[#dcf8c6] rounded-2xl rounded-tr-sm px-3 py-2 text-xs text-gray-800 max-w-[90%]">
+            "Comprei um lanche por R$ 25"
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <div className="bg-[#dcf8c6] rounded-2xl rounded-tr-sm px-3 py-2 text-xs text-gray-800 max-w-[90%]">
+            "Recebi R$ 1.500 de um cliente"
           </div>
         </div>
         <div className="flex justify-start">
-          <div className="bg-white rounded-2xl rounded-tl-sm px-3 py-2 text-xs text-gray-800 max-w-[85%] border border-gray-100 shadow-sm">
-            Registrado em Alimentação
+          <div className="bg-white rounded-2xl rounded-tl-sm px-3 py-2 text-xs text-gray-700 max-w-[90%] border border-gray-100 shadow-sm">
+            ✅ Movimentações registradas automaticamente!
           </div>
         </div>
       </div>
     </div>
-    <div className="mt-auto text-center">
+    <div className="text-center">
       <span className="inline-block bg-green-50 text-green-600 text-xs font-semibold px-3 py-1 rounded-full">
-        Registro automático
+        Registro rápido pelo WhatsApp
       </span>
     </div>
   </div>
 ));
+Card1.displayName = "Card1";
 
-RegistroCard.displayName = "RegistroCard";
-
-// Card 2 — Múltiplos formatos
-const FormatosCard = memo(() => (
+const Card2 = memo(() => (
   <div className="bg-white rounded-2xl p-5 shadow-sm flex flex-col gap-3 h-full">
-    <div className="text-sm font-bold text-gray-800 mb-1">Múltiplos formatos</div>
-    <div className="space-y-3 flex-1">
-      <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2">
-        <span className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-base flex-shrink-0">
-          🎤
-        </span>
-        <span className="text-sm text-gray-700 font-medium">Áudio</span>
-      </div>
-      <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2">
-        <span className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-base flex-shrink-0">
-          ✍️
-        </span>
-        <span className="text-sm text-gray-700 font-medium">Texto</span>
+    <div className="flex items-center gap-2 mb-1">
+      <span className="w-7 h-7 bg-[#1B4DBF] rounded-full flex items-center justify-center text-white font-black text-sm flex-shrink-0">2</span>
+      <span className="text-sm font-bold text-gray-800">Consulte suas finanças a qualquer momento</span>
+    </div>
+    <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex-1">
+      <div className="text-xs text-gray-400 mb-2 font-medium">Pergunte no WhatsApp</div>
+      <div className="space-y-2">
+        <div className="flex justify-end">
+          <div className="bg-[#dcf8c6] rounded-2xl rounded-tr-sm px-3 py-2 text-xs text-gray-800 max-w-[90%]">
+            "Quanto gastei este mês?"
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <div className="bg-[#dcf8c6] rounded-2xl rounded-tr-sm px-3 py-2 text-xs text-gray-800 max-w-[90%]">
+            "Qual meu saldo atual?"
+          </div>
+        </div>
+        <div className="flex justify-start">
+          <div className="bg-white rounded-2xl rounded-tl-sm px-3 py-2 text-xs text-gray-700 max-w-[90%] border border-gray-100 shadow-sm">
+            💬 Resposta instantânea direto no WhatsApp!
+          </div>
+        </div>
       </div>
     </div>
     <div className="text-center">
       <span className="inline-block bg-blue-50 text-blue-600 text-xs font-semibold px-3 py-1 rounded-full">
-        Fácil e natural
+        Respostas instantâneas
       </span>
     </div>
   </div>
 ));
+Card2.displayName = "Card2";
 
-FormatosCard.displayName = "FormatosCard";
-
-// Card 3 — Dashboard Mobile
-const DashboardCard = memo(() => (
+const Card3 = memo(() => (
   <div className="bg-white rounded-2xl p-5 shadow-sm flex flex-col gap-3 h-full">
-    <div className="text-sm font-bold text-gray-800 mb-1">Dashboard Mobile</div>
+    <div className="flex items-center gap-2 mb-1">
+      <span className="w-7 h-7 bg-[#1B4DBF] rounded-full flex items-center justify-center text-white font-black text-sm flex-shrink-0">3</span>
+      <span className="text-sm font-bold text-gray-800">Acesse análises completas no Dashboard</span>
+    </div>
     <div className="space-y-2 flex-1">
       <div className="flex justify-between items-center bg-gray-50 rounded-xl px-3 py-2">
-        <span className="text-sm text-gray-500">Saldo</span>
-        <span className="text-sm font-bold text-green-600">R$ 2.340</span>
+        <span className="text-xs text-gray-500">📊 Gráficos e relatórios</span>
+        <span className="text-xs font-bold text-[#1B4DBF]">Detalhados</span>
       </div>
       <div className="flex justify-between items-center bg-gray-50 rounded-xl px-3 py-2">
-        <span className="text-sm text-gray-500">Gastos</span>
-        <span className="text-sm font-bold text-red-500">R$ 1.850</span>
+        <span className="text-xs text-gray-500">📁 Exportar planilhas</span>
+        <span className="text-xs font-bold text-green-600">Excel / PDF</span>
       </div>
-      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden mt-1">
-        <div className="h-full bg-gradient-to-r from-[#1B4DBF] to-[#2a5dd4] rounded-full" style={{ width: "65%" }} />
+      <div className="flex justify-between items-center bg-gray-50 rounded-xl px-3 py-2">
+        <span className="text-xs text-gray-500">🏷️ Categorias</span>
+        <span className="text-xs font-bold text-purple-600">Personalizadas</span>
       </div>
-      <div className="flex gap-1 mt-1">
-        <div className="h-1.5 flex-1 bg-green-400 rounded-full" />
-        <div className="h-1.5 flex-1 bg-[#1B4DBF] rounded-full" />
-        <div className="h-1.5 flex-1 bg-yellow-400 rounded-full" />
-        <div className="h-1.5 flex-1 bg-purple-400 rounded-full" />
-      </div>
+      <p className="text-xs text-gray-400 text-center pt-1">
+        Solicite o acesso pelo WhatsApp
+      </p>
     </div>
     <div className="text-center">
-      <span className="inline-block bg-blue-50 text-blue-600 text-xs font-semibold px-3 py-1 rounded-full">
-        Funciona no celular
+      <span className="inline-block bg-purple-50 text-purple-600 text-xs font-semibold px-3 py-1 rounded-full">
+        Controle financeiro avançado
       </span>
     </div>
   </div>
 ));
-
-DashboardCard.displayName = "DashboardCard";
+Card3.displayName = "Card3";
 
 const HowItWorks = memo(() => {
   return (
@@ -101,25 +114,23 @@ const HowItWorks = memo(() => {
             Como funciona
           </span>
           <h2 className="text-3xl md:text-5xl font-black text-white mb-4 tracking-tight">
-            Simples como mandar uma mensagem
+            Como o Doutor Cash organiza sua vida financeira
           </h2>
           <p className="text-lg text-white/50">
-            Você conversa, o sistema organiza. Sem planilhas, sem complicação.
+            Converse pelo WhatsApp, registre suas movimentações e acompanhe sua situação financeira de forma simples e prática.
           </p>
         </div>
 
-        {/* 3-card container */}
         <div className="max-w-5xl mx-auto">
           <div className="bg-white/[0.04] backdrop-blur-sm border border-white/10 rounded-3xl p-6 md:p-10 shadow-2xl shadow-black/40">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-              <RegistroCard />
-              <FormatosCard />
-              <DashboardCard />
+              <Card1 />
+              <Card2 />
+              <Card3 />
             </div>
           </div>
         </div>
 
-        {/* CTA button */}
         <div className="flex justify-center mt-10">
           <Button
             className="bg-[#1B4DBF] hover:bg-[#2a5dd4] hover:scale-105 text-white font-bold text-base px-10 py-4 rounded-full h-auto shadow-xl shadow-[#1B4DBF]/40 transition-all duration-200 active:scale-[0.98]"
