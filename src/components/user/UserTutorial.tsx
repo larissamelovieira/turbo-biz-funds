@@ -295,7 +295,7 @@ const STEPS: TutorialStep[] = [
     label: "Categorias",
     title: "Organize seus gastos",
     subtitle: "Criar · Editar · Colorir · Analisar",
-    description: "Crie categorias personalizadas (Alimentação, Moradia, Lazer…) e associe-as às suas transações para ver exatamente para onde vai cada real.",
+    description: "Crie categorias personalizadas (Alimentação, Moradia, Lazer etc.) e associe-as às suas transações para visualizar exatamente para onde vai cada real.",
     features: [
       "Categorias com ícone e cor",
       "Gráfico de distribuição por categoria",
