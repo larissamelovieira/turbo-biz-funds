@@ -66,7 +66,7 @@ const Navbar = memo(() => {
               height={64}
               className="h-16 w-auto transition-transform duration-200 group-hover:scale-105"
             />
-            <span className="text-white font-bold text-[15px] leading-snug hidden sm:flex flex-col justify-center">
+            <span className="text-white font-bold text-[15px] leading-snug flex flex-col justify-center">
               <span>Doutor</span>
               <span>Cash</span>
             </span>
