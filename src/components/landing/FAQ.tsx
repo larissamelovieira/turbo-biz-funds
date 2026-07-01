@@ -12,6 +12,10 @@ const FAQ = memo(() => {
 
   const FAQS = locale === "pt" ? [
     {
+      question: "O que é o Doutor Cash?",
+      answer: "O Doutor Cash é um assistente financeiro com inteligência artificial que ajuda você a organizar sua vida financeira pelo WhatsApp, sem precisar preencher planilhas.\n\nExemplo:\n• \"Recebi R$ 2.000 de um cliente.\"\n• \"Abasteci o carro e gastei R$ 180.\"\n\nO sistema registra automaticamente suas movimentações.",
+    },
+    {
       question: "Preciso baixar algum aplicativo?",
       answer: "Não! Tudo funciona pelo WhatsApp que você já usa no dia a dia. O dashboard fica no navegador do celular ou computador — sem nada para instalar. É só conectar e começar a usar.",
     },
@@ -77,7 +81,7 @@ const FAQ = memo(() => {
                 <AccordionTrigger className="hover:text-[#E5E7EB] text-white py-5">
                   <span>{faq.question}</span>
                 </AccordionTrigger>
-                <AccordionContent className="text-white/60 pb-5">
+                <AccordionContent className="text-white/60 pb-5 whitespace-pre-line">
                   {faq.answer}
                 </AccordionContent>
               </AccordionItem>
