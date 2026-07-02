@@ -126,7 +126,7 @@ const AvatarStack = memo(() => (
         />
       ))}
     </div>
-    <div className="text-left leading-tight">
+    <div className="text-center sm:text-left leading-tight">
       <div className="text-white font-extrabold text-sm">+DE 5 MIL</div>
       <div className="text-white font-extrabold text-xs uppercase tracking-wide">
         PESSOAS SAÍRAM<br/>DAS DÍVIDAS
@@ -180,7 +180,7 @@ const Hero = memo(() => {
 
           {/* CTA row */}
           <div
-            className="flex flex-col sm:flex-row items-center justify-center gap-5 relative z-20"
+            className="flex flex-col sm:flex-row items-center justify-center gap-5 relative z-20 w-full"
             style={{ ...fadeUp, animationDelay: "0.24s" }}
           >
             <CTAButton
