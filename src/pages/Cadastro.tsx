@@ -3,12 +3,28 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, Lock, User, Phone, ArrowRight, Check, Loader2, Zap, Eye, EyeOff, MessageCircle, BarChart3, CreditCard, Repeat2, Brain, Wallet, Hash, Crown, BadgePercent, TrendingUp, BadgeCheck, QrCode } from "lucide-react";
+import { Mail, Lock, User, Phone, ArrowRight, Check, Loader2, Zap, Eye, EyeOff, MessageCircle, BarChart3, CreditCard, Repeat2, Brain, Wallet, Hash, Crown, BadgePercent, TrendingUp, BadgeCheck, QrCode, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { analytics } from "@/lib/analytics";
 import { useAuth } from "@/contexts/AuthContext";
 const logoWeb = "/logoweb.png";
+
+function isOver18(dateStr: string): boolean {
+  if (!dateStr) return false;
+  const birth = new Date(dateStr);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age >= 18;
+}
+
+const maxBirthDate = (() => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 18);
+  return d.toISOString().split("T")[0];
+})();
 
 function validateCPF(cpf: string): boolean {
   const digits = cpf.replace(/\D/g, "");
@@ -36,6 +52,10 @@ const registerSchema = z
       .string()
       .optional()
       .refine((v) => !v || validateCPF(v), "CPF inválido"),
+    birthDate: z
+      .string()
+      .min(1, "Data de nascimento é obrigatória")
+      .refine((v) => isOver18(v), "Você precisa ter pelo menos 18 anos para se cadastrar"),
     email: z.string().min(1, "Email é obrigatório").email("Email inválido"),
     password: z
       .string()
@@ -54,6 +74,7 @@ interface FormErrors {
   name?: string;
   phone?: string;
   cpf?: string;
+  birthDate?: string;
   email?: string;
   password?: string;
   confirmPassword?: string;
@@ -135,6 +156,7 @@ const Cadastro = () => {
     name: "",
     phone: "",
     cpf: "",
+    birthDate: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -164,6 +186,7 @@ const Cadastro = () => {
     const result = registerSchema.safeParse({
       name: formData.name,
       phone: formData.phone,
+      birthDate: formData.birthDate,
       email: formData.email,
       password: formData.password,
       confirmPassword: formData.confirmPassword,
@@ -174,6 +197,9 @@ const Cadastro = () => {
       result.error.issues.forEach((issue) => {
         const path = issue.path[0] as keyof FormErrors;
         formattedErrors[path] = issue.message;
+        if (path === "birthDate" && issue.message.includes("18 anos")) {
+          toast.error("Você precisa ter pelo menos 18 anos para se cadastrar.", { duration: 4000 });
+        }
       });
       setErrors(formattedErrors);
       return false;
@@ -472,6 +498,37 @@ const Cadastro = () => {
                     <p className="text-xs text-destructive flex items-center gap-1">
                       <span className="w-1 h-1 rounded-full bg-destructive" />
                       {errors.cpf}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="birthDate" className="text-sm font-medium text-white/80">
+                    Data de nascimento
+                  </Label>
+                  <div className="relative">
+                    <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/55 pointer-events-none z-10" />
+                    <Input
+                      id="birthDate"
+                      type="date"
+                      max={maxBirthDate}
+                      value={formData.birthDate}
+                      onChange={(e) => {
+                        setFormData({ ...formData, birthDate: e.target.value });
+                        if (errors.birthDate) setErrors({ ...errors, birthDate: undefined });
+                      }}
+                      className={`auth-input pl-11 h-11 [color-scheme:dark] ${
+                        errors.birthDate
+                          ? "border-destructive focus:border-destructive"
+                          : "bg-[#0c1938] border-[#1B4DBF]/40 text-white placeholder:text-white/40 focus:border-[#1B4DBF] focus:bg-[#0e1d42] focus:ring-[#1B4DBF]/20"
+                      }`}
+                      disabled={isLoading}
+                    />
+                  </div>
+                  {errors.birthDate && (
+                    <p className="text-xs text-destructive flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-destructive" />
+                      {errors.birthDate}
                     </p>
                   )}
                 </div>
