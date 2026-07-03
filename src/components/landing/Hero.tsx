@@ -126,7 +126,7 @@ const AvatarStack = memo(() => (
         />
       ))}
     </div>
-    <div className="text-center sm:text-left leading-tight">
+    <div className="text-left leading-tight">
       <div className="text-white font-extrabold text-sm">+DE 5 MIL</div>
       <div className="text-white font-extrabold text-xs uppercase tracking-wide">
         PESSOAS SAÍRAM<br/>DAS DÍVIDAS

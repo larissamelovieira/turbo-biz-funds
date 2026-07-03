@@ -154,14 +154,6 @@ const Pricing = memo(() => {
             </div>
           </div>
         </div>
-
-        <div className="mt-8 text-center">
-          <p className="text-sm text-white/40 max-w-lg mx-auto">
-            <span className="font-medium text-white/60">Por que não tem plano grátis?</span>{" "}
-            Acreditamos que quem investe no próprio controle financeiro leva a sério.
-            Isso nos permite oferecer suporte de qualidade e manter o produto sem anúncios.
-          </p>
-        </div>
       </div>
     </section>
   );
