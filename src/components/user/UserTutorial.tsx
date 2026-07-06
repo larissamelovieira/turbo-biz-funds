@@ -465,7 +465,7 @@ const STEPS: TutorialStep[] = [
     label: "WhatsApp",
     title: "Registre pelo WhatsApp",
     subtitle: "Envie uma mensagem · Pronto!",
-    description: "Conecte seu número e registre transações enviando uma mensagem de texto. O bot interpreta a descrição e lança automaticamente na sua conta.",
+    description: "",
     features: [
       "Cadastro via mensagem de texto",
       "Confirmação automática do lançamento",
