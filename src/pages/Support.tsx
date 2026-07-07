@@ -9,6 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { storageKey as tutorialStorageKey } from "@/components/user/UserTutorial";
 
 const FAQ_ITEMS = [
   {
@@ -27,10 +30,6 @@ const FAQ_ITEMS = [
     question: "Posso cancelar a qualquer momento?",
     answer: "Sim, você pode cancelar sua assinatura a qualquer momento sem taxas adicionais. Basta acessar as configurações da sua conta."
   },
-  {
-    question: "Como funciona o período de trial?",
-    answer: "O trial de R$ 9,90 oferece acesso completo por 15 dias. Ao final, você escolhe se quer assinar um plano mensal ou anual."
-  },
 ];
 
 const SUPPORT_CHANNELS = [
@@ -38,8 +37,8 @@ const SUPPORT_CHANNELS = [
     icon: MessageCircle,
     title: "WhatsApp",
     description: "Resposta em até 2 horas (dias úteis)",
-    value: "(11) 99999-9999",
-    action: "https://wa.me/5511999999999",
+    value: "(35) 99953-7223",
+    action: "https://wa.me/5535999537223",
     color: "bg-emerald-500/10",
     iconColor: "text-emerald-500"
   },
@@ -64,6 +63,8 @@ const SUPPORT_CHANNELS = [
 ];
 
 export default function Support() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
@@ -88,6 +89,12 @@ export default function Support() {
       setMessage("");
       setIsSubmitting(false);
     }, 1500);
+  };
+
+  const openTutorial = () => {
+    localStorage.removeItem(tutorialStorageKey(user?.id));
+    navigate("/dashboard");
+    window.location.reload();
   };
 
   const copyToClipboard = (text: string, label: string) => {
@@ -253,17 +260,15 @@ export default function Support() {
                   <FileText className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium text-sm">Documentação Completa</p>
+                  <p className="font-medium text-sm">Tutorial de Uso</p>
                   <p className="text-xs text-muted-foreground">
-                    Consulte nossos guias detalhados e tutoriais
+                    Reveja o passo a passo de como usar o DoutorCash
                   </p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
-                <a href="https://docs.doutorcashapp.com.br" target="_blank" rel="noopener noreferrer">
-                  Acessar
-                  <ExternalLink className="h-3 w-3 ml-2" />
-                </a>
+              <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={openTutorial}>
+                Acessar
+                <ExternalLink className="h-3 w-3 ml-2" />
               </Button>
             </div>
         </CardContent>

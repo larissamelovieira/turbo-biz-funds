@@ -371,13 +371,52 @@ export default function RelatorioPage() {
     [yearTransactions, selectedMonth]
   );
 
+  // Projeção baseada em recorrências ativas — usada quando o mês não tem
+  // transação real (ex: mês futuro), já que o backend só gera a transação
+  // real quando o mês efetivamente chega.
+  const projectedForMonth = (year: number, monthIdx: number) => {
+    const monthStart = new Date(year, monthIdx, 1);
+    const monthEnd = new Date(year, monthIdx + 1, 0);
+    let income = 0;
+    let expense = 0;
+    for (const r of recurrences) {
+      if (!r.active) continue;
+      const start = new Date(r.startDate);
+      const end = r.endDate ? new Date(r.endDate) : null;
+      if (start > monthEnd) continue;
+      if (end && end < monthStart) continue;
+      const applies =
+        r.frequency === "monthly" ||
+        (r.frequency === "yearly" && start.getMonth() === monthIdx);
+      if (!applies) continue;
+      if (r.type === "INCOME") income += r.amount;
+      else expense += r.amount;
+    }
+    return { income, expense };
+  };
+
+  const hasRealDataForMonth = (year: number, monthIdx: number) =>
+    allTransactions.some((t) => {
+      const d = new Date(t.occurredAt);
+      return d.getFullYear() === year && d.getMonth() === monthIdx;
+    });
+
   // Summary totals
-  const totalIncome = filteredTransactions
+  const realIncome = filteredTransactions
     .filter((t) => t.type === "INCOME")
     .reduce((s, t) => s + t.amount, 0);
-  const totalExpense = filteredTransactions
+  const realExpense = filteredTransactions
     .filter((t) => t.type === "EXPENSE")
     .reduce((s, t) => s + t.amount, 0);
+
+  const isProjectedPeriod =
+    selectedMonth !== null && !hasRealDataForMonth(selectedYear, selectedMonth);
+  const projection = isProjectedPeriod
+    ? projectedForMonth(selectedYear, selectedMonth)
+    : null;
+
+  const totalIncome = projection ? projection.income : realIncome;
+  const totalExpense = projection ? projection.expense : realExpense;
   const balance = totalIncome - totalExpense;
 
   // Group by month (0-indexed)
@@ -407,12 +446,23 @@ export default function RelatorioPage() {
     [transactionsByMonth]
   );
 
-  // Chart data — uses yearTransactions (full year, ignores month filter)
+  // Chart data — uses yearTransactions (full year, ignores month filter).
+  // Meses sem transação real usam projeção de recorrências ativas.
   const chartData = useMemo(() => {
     return visibleMonths.map((mIdx) => {
       const monthTxs = yearTransactions.filter(
         (t) => new Date(t.occurredAt).getMonth() === mIdx
       );
+      if (monthTxs.length === 0) {
+        const proj = projectedForMonth(selectedYear, mIdx);
+        return {
+          month: MONTH_NAMES[mIdx].slice(0, 3),
+          monthIndex: mIdx,
+          income: proj.income,
+          expense: proj.expense,
+          projected: proj.income > 0 || proj.expense > 0,
+        };
+      }
       const income = monthTxs
         .filter((t) => t.type === "INCOME")
         .reduce((s, t) => s + t.amount, 0);
@@ -424,9 +474,11 @@ export default function RelatorioPage() {
         monthIndex: mIdx,
         income,
         expense,
+        projected: false,
       };
     });
-  }, [visibleMonths, yearTransactions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleMonths, yearTransactions, recurrences, selectedYear]);
 
   function exportExcel() {
     // Sheet 1: Transações
@@ -553,8 +605,9 @@ export default function RelatorioPage() {
 
       {/* Summary notice */}
       <p className="text-xs text-muted-foreground -mt-2">
-        Exibindo transações disponíveis no sistema para {selectedYear}. Os dados
-        refletem o histórico carregado da API.
+        {isProjectedPeriod
+          ? `Este mês ainda não tem lançamentos — valores abaixo são uma projeção baseada nas suas recorrências ativas.`
+          : `Exibindo transações disponíveis no sistema para ${selectedYear}. Os dados refletem o histórico carregado da API.`}
       </p>
 
       {/* Summary cards */}

@@ -17,7 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { fmtBRL, fmtNumber } from "@/lib/format";
+import { fmtBRL } from "@/lib/format";
 
 interface ApiTransaction {
   id: string;
@@ -66,6 +66,9 @@ const TransactionsPage = memo(() => {
     description: "",
     occurredAt: new Date().toISOString().split("T")[0],
   });
+  const [isInstallment, setIsInstallment] = useState(false);
+  const [installments, setInstallments] = useState("2");
+  const [isCreatingInstallments, setIsCreatingInstallments] = useState(false);
 
   const { data: transactionsRes, isLoading } = useQuery({
     queryKey: ["transactions", period],
@@ -84,8 +87,19 @@ const TransactionsPage = memo(() => {
   const categories = categoriesRes?.data ?? [];
   const catMap = new Map(categories.map((c) => [c.id, c.name]));
 
-  const totalIncome = transactions.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amount, 0);
-  const totalExpense = transactions.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amount, 0);
+  const filtered = transactions.filter((t) => {
+    if (typeFilter !== "ALL" && t.type !== typeFilter) return false;
+    if (!search) return true;
+    const catName = catMap.get(t.categoryId) ?? "";
+    const desc = t.description ?? "";
+    return (
+      desc.toLowerCase().includes(search.toLowerCase()) ||
+      catName.toLowerCase().includes(search.toLowerCase())
+    );
+  });
+
+  const totalIncome = filtered.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amount, 0);
+  const totalExpense = filtered.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amount, 0);
   const balance = totalIncome - totalExpense;
 
 
@@ -101,17 +115,23 @@ const TransactionsPage = memo(() => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Transação criada com sucesso!");
-      setIsDialogOpen(false);
-      setForm({
-        categoryId: "",
-        type: "EXPENSE",
-        amount: "",
-        description: "",
-        occurredAt: new Date().toISOString().split("T")[0],
-      });
+      resetForm();
     },
     onError: () => toast.error("Erro ao criar transação"),
   });
+
+  const resetForm = () => {
+    setIsDialogOpen(false);
+    setForm({
+      categoryId: "",
+      type: "EXPENSE",
+      amount: "",
+      description: "",
+      occurredAt: new Date().toISOString().split("T")[0],
+    });
+    setIsInstallment(false);
+    setInstallments("2");
+  };
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) =>
@@ -124,33 +144,58 @@ const TransactionsPage = memo(() => {
     onError: () => toast.error("Erro ao remover transação"),
   });
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!form.categoryId || !form.amount) {
       toast.error("Preencha categoria e valor");
       return;
     }
+
+    const total = parseFloat(form.amount);
+
+    if (isInstallment && form.type === "EXPENSE") {
+      const count = parseInt(installments, 10);
+      if (!count || count < 2) {
+        toast.error("Informe um número de parcelas válido (mínimo 2)");
+        return;
+      }
+      const installmentAmount = Math.round((total / count) * 100) / 100;
+      const roundingAdjustment = Math.round((total - installmentAmount * count) * 100) / 100;
+      const baseDate = new Date(form.occurredAt);
+
+      setIsCreatingInstallments(true);
+      try {
+        for (let i = 0; i < count; i++) {
+          const occurredAt = new Date(baseDate);
+          occurredAt.setMonth(occurredAt.getMonth() + i);
+          const amount = i === count - 1 ? installmentAmount + roundingAdjustment : installmentAmount;
+          await api.post(apiEndpoints.transactions.create, {
+            categoryId: form.categoryId,
+            type: form.type,
+            amount,
+            description: `${form.description || "Compra parcelada"} (${i + 1}/${count})`,
+            occurredAt: occurredAt.toISOString(),
+          });
+        }
+        queryClient.invalidateQueries({ queryKey: ["transactions"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+        toast.success(`${count} parcelas criadas com sucesso!`);
+        resetForm();
+      } catch {
+        toast.error("Erro ao criar parcelas — algumas podem ter sido salvas");
+      } finally {
+        setIsCreatingInstallments(false);
+      }
+      return;
+    }
+
     createMutation.mutate({
       categoryId: form.categoryId,
       type: form.type,
-      amount: parseFloat(form.amount),
+      amount: total,
       description: form.description || undefined,
       occurredAt: new Date(form.occurredAt).toISOString(),
     });
   };
-
-
-  const filtered = transactions.filter((t) => {
-    if (typeFilter !== "ALL" && t.type !== typeFilter) return false;
-    if (!search) return true;
-    const catName = catMap.get(t.categoryId) ?? "";
-    const desc = t.description ?? "";
-    return (
-      desc.toLowerCase().includes(search.toLowerCase()) ||
-      catName.toLowerCase().includes(search.toLowerCase())
-    );
-  });
-
-  const fmt = fmtNumber;
 
   if (isLoading) return <TransactionsPageSkeleton />;
 
@@ -335,13 +380,7 @@ const TransactionsPage = memo(() => {
         </CardContent>
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={(open) => {
-        setIsDialogOpen(open);
-        if (!open) {
-          setShowNewCategory(false);
-          setNewCategoryName("");
-        }
-      }}>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Nova Transação</DialogTitle>
@@ -420,6 +459,37 @@ const TransactionsPage = memo(() => {
               </div>
             </div>
 
+            {form.type === "EXPENSE" && (
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isInstallment}
+                    onChange={(e) => setIsInstallment(e.target.checked)}
+                    className="rounded border-input"
+                  />
+                  Compra parcelada
+                </label>
+                {isInstallment && (
+                  <div className="space-y-2 pl-6">
+                    <Label>Número de parcelas</Label>
+                    <Input
+                      type="number"
+                      min="2"
+                      max="48"
+                      value={installments}
+                      onChange={(e) => setInstallments(e.target.value)}
+                    />
+                    {form.amount && parseInt(installments, 10) >= 2 && (
+                      <p className="text-xs text-muted-foreground">
+                        {installments}x de {fmtBRL(parseFloat(form.amount) / parseInt(installments, 10))}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Descrição <span className="text-muted-foreground font-normal">(opcional)</span></Label>
               <Input
@@ -442,8 +512,8 @@ const TransactionsPage = memo(() => {
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1 sm:flex-none">
               Cancelar
             </Button>
-            <Button onClick={handleCreate} disabled={createMutation.isPending} className="flex-1 sm:flex-none">
-              {createMutation.isPending ? (
+            <Button onClick={handleCreate} disabled={createMutation.isPending || isCreatingInstallments} className="flex-1 sm:flex-none">
+              {createMutation.isPending || isCreatingInstallments ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Salvando...</>
               ) : (
                 <><Plus className="w-4 h-4 mr-2" />Criar transação</>

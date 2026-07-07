@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const storageKey = (userId?: string) =>
+export const storageKey = (userId?: string) =>
   userId ? `user:tutorial:completed:${userId}` : "user:tutorial:completed";
 
 interface TutorialStep {

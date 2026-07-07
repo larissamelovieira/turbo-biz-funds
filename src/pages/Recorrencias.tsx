@@ -30,6 +30,8 @@ import {
   useDeleteRecurrence,
 } from "@/features/recurrences/hooks/use-recurrences";
 import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { api, apiEndpoints } from "@/lib/api/client";
 import type { RecurrencePayload } from "@/shared/types";
 import { fmtBRL, fmtNumber, parseBRNumber as parseBR } from "@/lib/format";
 
@@ -52,6 +54,7 @@ const defaultForm = (): RecurrencePayload => ({
 
 const RecorrenciasPage = memo(() => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { recurrences, isLoading } = useActiveRecurrences();
   const { categories } = useCategories();
   const createRecurrence = useCreateRecurrence();
@@ -62,6 +65,22 @@ const RecorrenciasPage = memo(() => {
   const [isInstallment, setIsInstallment] = useState(false);
   const [installments, setInstallments] = useState(2);
   const [acrescimo, setAcrescimo] = useState(0);
+  const [isNewCategory, setIsNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+
+  const createCategory = useMutation({
+    mutationFn: (name: string) =>
+      api.post<{ data: { id: string; name: string } }>(apiEndpoints.categories.create, { name }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      const created = (res as { data: { id: string; name: string } }).data;
+      setForm((f) => ({ ...f, categoryId: created.id }));
+      setIsNewCategory(false);
+      setNewCategoryName("");
+      toast.success("Categoria criada!");
+    },
+    onError: () => toast.error("Erro ao criar categoria"),
+  });
 
   // Estado do modal de edição
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -94,18 +113,17 @@ const RecorrenciasPage = memo(() => {
     .filter((r) => r.type === "EXPENSE")
     .reduce((acc, r) => acc + r.amount, 0);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!form.categoryId || !form.amount || !form.startDate) {
       toast.error("Preencha categoria, valor e data de início");
       return;
     }
     const rawAmount = Number(form.amount);
+    const parcelAmount = (rawAmount * (1 + acrescimo / 100)) / installments;
     const payload: RecurrencePayload = {
       categoryId: form.categoryId,
       type: form.type,
-      amount: isInstallment
-        ? (rawAmount * (1 + acrescimo / 100)) / installments
-        : rawAmount,
+      amount: isInstallment ? parcelAmount : rawAmount,
       description: form.description?.trim() || undefined,
       frequency: isInstallment ? "monthly" : form.frequency,
       startDate: `${form.startDate}T00:00:00.000Z`,
@@ -115,21 +133,50 @@ const RecorrenciasPage = memo(() => {
         ? `${form.endDate}T00:00:00.000Z`
         : undefined,
     };
+
+    const finishUp = () => {
+      toast.success("Recorrência criada!");
+      logActivity({
+        severity: "success",
+        title: "Recorrência criada",
+        body: `${payload.description ?? "Nova recorrência"} — ${fmtBRL(payload.amount)} (${FREQUENCY_LABELS[payload.frequency] ?? payload.frequency})`,
+        action: { label: "Ver recorrências", href: "/dashboard/recorrencias" },
+      });
+      setIsDialogOpen(false);
+      setIsInstallment(false);
+      setInstallments(2);
+      setAcrescimo(0);
+      setForm({ ...defaultForm(), amount: "" } as RecurrencePayload & { amount: string });
+    };
+
+    if (isInstallment) {
+      // Parcelado tem total e fim definidos — gera as transações reais das
+      // parcelas aqui, já que recorrência sozinha não aparece no Relatório
+      // (que só lê /v1/transactions).
+      const roundingAdjustment = Math.round((rawAmount * (1 + acrescimo / 100) - parcelAmount * installments) * 100) / 100;
+      try {
+        for (let i = 0; i < installments; i++) {
+          const occurredAt = new Date(form.startDate);
+          occurredAt.setMonth(occurredAt.getMonth() + i);
+          const amount = i === installments - 1 ? parcelAmount + roundingAdjustment : parcelAmount;
+          await api.post(apiEndpoints.transactions.create, {
+            categoryId: form.categoryId,
+            type: form.type,
+            amount,
+            description: `${form.description?.trim() || "Compra parcelada"} (${i + 1}/${installments})`,
+            occurredAt: occurredAt.toISOString(),
+          });
+        }
+        queryClient.invalidateQueries({ queryKey: ["transactions"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      } catch {
+        toast.error("Erro ao criar parcelas — algumas podem ter sido salvas");
+        return;
+      }
+    }
+
     createRecurrence.mutate(payload, {
-      onSuccess: () => {
-        toast.success("Recorrência criada!");
-        logActivity({
-          severity: "success",
-          title: "Recorrência criada",
-          body: `${payload.description ?? "Nova recorrência"} — ${fmtBRL(payload.amount)} (${FREQUENCY_LABELS[payload.frequency] ?? payload.frequency})`,
-          action: { label: "Ver recorrências", href: "/dashboard/recorrencias" },
-        });
-        setIsDialogOpen(false);
-        setIsInstallment(false);
-        setInstallments(2);
-        setAcrescimo(0);
-        setForm({ ...defaultForm(), amount: "" } as RecurrencePayload & { amount: string });
-      },
+      onSuccess: finishUp,
       onError: (error: unknown) => {
         const msg = (error as { message?: string })?.message;
         toast.error(msg ? `Erro: ${msg}` : "Erro ao criar recorrência");
@@ -351,6 +398,8 @@ const RecorrenciasPage = memo(() => {
           if (!open) {
             setIsInstallment(false);
             setInstallments(2);
+            setIsNewCategory(false);
+            setNewCategoryName("");
             setForm({ ...defaultForm(), amount: "" } as RecurrencePayload & { amount: string });
           }
         }}
@@ -401,20 +450,47 @@ const RecorrenciasPage = memo(() => {
 
             {/* 3. Categoria */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Categoria</Label>
-              <Select
-                value={form.categoryId}
-                onValueChange={(v) => setForm({ ...form, categoryId: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Categoria</Label>
+                <button
+                  type="button"
+                  className="text-xs font-medium text-primary hover:underline"
+                  onClick={() => setIsNewCategory((v) => !v)}
+                >
+                  {isNewCategory ? "Selecionar existente" : "+ Nova categoria"}
+                </button>
+              </div>
+              {isNewCategory ? (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Ex: Assinaturas, Educação..."
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!newCategoryName.trim() || createCategory.isPending}
+                    onClick={() => createCategory.mutate(newCategoryName.trim())}
+                  >
+                    {createCategory.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Criar"}
+                  </Button>
+                </div>
+              ) : (
+                <Select
+                  value={form.categoryId}
+                  onValueChange={(v) => setForm({ ...form, categoryId: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {/* 4. Valor — destacado */}

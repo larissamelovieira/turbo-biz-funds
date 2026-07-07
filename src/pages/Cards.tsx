@@ -23,6 +23,9 @@ import { toast } from "sonner";
 import { useCards, useCreateCard, useUpdateCard, useDeleteCard } from "@/features/cards/hooks/use-cards";
 import type { CreditCard as CreditCardType } from "@/features/cards/hooks/use-cards";
 import { useCardHistory, useAddCardHistory } from "@/features/cards/hooks/use-card-history";
+import { useCategories } from "@/features/categories/hooks/use-categories";
+import { api, apiEndpoints } from "@/lib/api/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { fmtBRL } from "@/lib/format";
 
 const CARD_COLORS = [
@@ -34,6 +37,15 @@ const CARD_COLORS = [
 ];
 
 const EMPTY_FORM = { name: "", number: "", limit: "", dueDate: "", flag: "Visa", color: CARD_COLORS[0] };
+
+// Cartões criados pela IA (WhatsApp) vêm sem cor — atribui uma cor
+// determinística por id, pra não ficar trocando a cada re-render.
+function colorForCard(card: CreditCardType): string {
+  if (card.color) return card.color;
+  let hash = 0;
+  for (const ch of String(card.id)) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return CARD_COLORS[hash % CARD_COLORS.length];
+}
 
 const CardFormFields = ({
   values,
@@ -142,6 +154,8 @@ const CardsPage = memo(() => {
   const createCard = useCreateCard();
   const updateCard = useUpdateCard();
   const deleteCard = useDeleteCard();
+  const { categories } = useCategories();
+  const queryClient = useQueryClient();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<CreditCardType | null>(null);
@@ -150,6 +164,7 @@ const CardsPage = memo(() => {
   const [usageAmount, setUsageAmount] = useState("");
   const [usageDescription, setUsageDescription] = useState("");
   const [usageType, setUsageType] = useState<"gasto" | "pagamento">("gasto");
+  const [usageCategoryId, setUsageCategoryId] = useState("");
   const [form, setForm] = useState(EMPTY_FORM);
   const [editForm, setEditForm] = useState(EMPTY_FORM);
 
@@ -187,12 +202,14 @@ const CardsPage = memo(() => {
     setUsageAmount("");
     setUsageDescription("");
     setUsageType("gasto");
+    setUsageCategoryId("");
   };
 
   const handleUsage = () => {
     if (!usageCard) return;
     const amount = parseFloat(usageAmount);
     if (!amount || amount <= 0) { toast.error("Informe um valor válido"); return; }
+    if (usageType === "gasto" && !usageCategoryId) { toast.error("Selecione uma categoria"); return; }
     const usedBefore = usageCard.used;
     const newUsed = usageType === "gasto"
       ? Math.min(usedBefore + amount, usageCard.limit)
@@ -208,6 +225,18 @@ const CardsPage = memo(() => {
             usedBefore,
             usedAfter: newUsed,
           });
+          if (usageType === "gasto") {
+            api.post(apiEndpoints.transactions.create, {
+              categoryId: usageCategoryId,
+              type: "EXPENSE",
+              amount,
+              description: `${usageDescription.trim() || "Gasto"} (${usageCard.name})`,
+              occurredAt: new Date().toISOString(),
+            }).then(() => {
+              queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+              queryClient.invalidateQueries({ queryKey: ["transactions"] });
+            }).catch(() => toast.error("Gasto no cartão salvo, mas falhou ao somar nas despesas"));
+          }
           toast.success(usageType === "gasto" ? "Gasto registrado!" : "Pagamento registrado!");
           setUsageCard(null);
         },
@@ -228,7 +257,7 @@ const CardsPage = memo(() => {
       limit: String(card.limit),
       dueDate: card.dueDate,
       flag: card.flag,
-      color: card.color,
+      color: colorForCard(card),
     });
   };
 
@@ -299,9 +328,9 @@ const CardsPage = memo(() => {
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
           {cards.map((card) => (
             <Card key={card.id} className="border-border shadow-sm overflow-hidden group">
-              <div className={`h-36 bg-gradient-to-br ${card.color} p-6 flex flex-col justify-between relative`}>
+              <div className={`h-36 bg-gradient-to-br ${colorForCard(card)} p-6 flex flex-col justify-between relative`}>
                 <div className="flex justify-between items-start">
-                  <span className="text-white font-semibold">{card.name}</span>
+                  <span className="text-white font-semibold">{card.name || "Cartão sem nome"}</span>
                   <div className="flex items-center gap-1">
                     <span className="text-white/80 text-sm mr-1">{card.flag}</span>
                     <Button
@@ -499,6 +528,21 @@ const CardsPage = memo(() => {
                 <ArrowDownCircle className="w-4 h-4" /> Pagamento
               </button>
             </div>
+            {usageType === "gasto" && (
+              <div className="space-y-2">
+                <Label>Categoria</Label>
+                <select
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  value={usageCategoryId}
+                  onChange={(e) => setUsageCategoryId(e.target.value)}
+                >
+                  <option value="">Selecione...</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Descrição (opcional)</Label>
               <Input
