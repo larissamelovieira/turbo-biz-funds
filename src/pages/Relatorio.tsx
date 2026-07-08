@@ -373,10 +373,12 @@ export default function RelatorioPage() {
 
   // Projeção baseada em recorrências ativas — usada quando o mês não tem
   // transação real (ex: mês futuro), já que o backend só gera a transação
-  // real quando o mês efetivamente chega.
+  // real quando o mês efetivamente chega. Considera todas as frequências,
+  // não só mensal.
   const projectedForMonth = (year: number, monthIdx: number) => {
     const monthStart = new Date(year, monthIdx, 1);
     const monthEnd = new Date(year, monthIdx + 1, 0);
+    const daysInMonth = monthEnd.getDate();
     let income = 0;
     let expense = 0;
     for (const r of recurrences) {
@@ -385,12 +387,17 @@ export default function RelatorioPage() {
       const end = r.endDate ? new Date(r.endDate) : null;
       if (start > monthEnd) continue;
       if (end && end < monthStart) continue;
-      const applies =
-        r.frequency === "monthly" ||
-        (r.frequency === "yearly" && start.getMonth() === monthIdx);
-      if (!applies) continue;
-      if (r.type === "INCOME") income += r.amount;
-      else expense += r.amount;
+
+      let occurrencesInMonth = 0;
+      if (r.frequency === "monthly") occurrencesInMonth = 1;
+      else if (r.frequency === "yearly") occurrencesInMonth = start.getMonth() === monthIdx ? 1 : 0;
+      else if (r.frequency === "weekly") occurrencesInMonth = daysInMonth / 7;
+      else if (r.frequency === "daily") occurrencesInMonth = daysInMonth;
+
+      if (occurrencesInMonth === 0) continue;
+      const value = r.amount * occurrencesInMonth;
+      if (r.type === "INCOME") income += value;
+      else expense += value;
     }
     return { income, expense };
   };
@@ -401,22 +408,34 @@ export default function RelatorioPage() {
       return d.getFullYear() === year && d.getMonth() === monthIdx;
     });
 
-  // Summary totals
-  const realIncome = filteredTransactions
-    .filter((t) => t.type === "INCOME")
-    .reduce((s, t) => s + t.amount, 0);
-  const realExpense = filteredTransactions
-    .filter((t) => t.type === "EXPENSE")
-    .reduce((s, t) => s + t.amount, 0);
+  // Valor real ou projetado de um mês específico
+  const monthlyValues = (year: number, monthIdx: number) => {
+    if (hasRealDataForMonth(year, monthIdx)) {
+      const monthTxs = allTransactions.filter((t) => {
+        const d = new Date(t.occurredAt);
+        return d.getFullYear() === year && d.getMonth() === monthIdx;
+      });
+      return {
+        income: monthTxs.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amount, 0),
+        expense: monthTxs.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amount, 0),
+        projected: false,
+      };
+    }
+    const proj = projectedForMonth(year, monthIdx);
+    return { ...proj, projected: proj.income > 0 || proj.expense > 0 };
+  };
 
+  // Summary totals — soma todos os meses do período selecionado (mês único
+  // ou o ano inteiro), usando real quando existe e projeção quando não existe.
   const isProjectedPeriod =
     selectedMonth !== null && !hasRealDataForMonth(selectedYear, selectedMonth);
-  const projection = isProjectedPeriod
-    ? projectedForMonth(selectedYear, selectedMonth)
-    : null;
 
-  const totalIncome = projection ? projection.income : realIncome;
-  const totalExpense = projection ? projection.expense : realExpense;
+  const totalIncome = selectedMonth !== null
+    ? monthlyValues(selectedYear, selectedMonth).income
+    : visibleMonths.reduce((s, m) => s + monthlyValues(selectedYear, m).income, 0);
+  const totalExpense = selectedMonth !== null
+    ? monthlyValues(selectedYear, selectedMonth).expense
+    : visibleMonths.reduce((s, m) => s + monthlyValues(selectedYear, m).expense, 0);
   const balance = totalIncome - totalExpense;
 
   // Group by month (0-indexed)
@@ -450,31 +469,13 @@ export default function RelatorioPage() {
   // Meses sem transação real usam projeção de recorrências ativas.
   const chartData = useMemo(() => {
     return visibleMonths.map((mIdx) => {
-      const monthTxs = yearTransactions.filter(
-        (t) => new Date(t.occurredAt).getMonth() === mIdx
-      );
-      if (monthTxs.length === 0) {
-        const proj = projectedForMonth(selectedYear, mIdx);
-        return {
-          month: MONTH_NAMES[mIdx].slice(0, 3),
-          monthIndex: mIdx,
-          income: proj.income,
-          expense: proj.expense,
-          projected: proj.income > 0 || proj.expense > 0,
-        };
-      }
-      const income = monthTxs
-        .filter((t) => t.type === "INCOME")
-        .reduce((s, t) => s + t.amount, 0);
-      const expense = monthTxs
-        .filter((t) => t.type === "EXPENSE")
-        .reduce((s, t) => s + t.amount, 0);
+      const values = monthlyValues(selectedYear, mIdx);
       return {
         month: MONTH_NAMES[mIdx].slice(0, 3),
         monthIndex: mIdx,
-        income,
-        expense,
-        projected: false,
+        income: values.income,
+        expense: values.expense,
+        projected: values.projected,
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
