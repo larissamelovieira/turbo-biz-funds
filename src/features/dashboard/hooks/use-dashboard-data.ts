@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api, apiEndpoints } from "@/lib/api/client";
 import { Wallet, TrendingUp, TrendingDown } from "lucide-react";
 import type { DashboardData, DashboardStat, ExpenseByDay, CategoryExpense, Goal } from "../types";
-import type { Transaction } from "@/shared/types";
+import type { Transaction, Recurrence } from "@/shared/types";
 import { fmtBRL } from "@/lib/format";
 
 const CHART_COLORS = [
@@ -20,6 +20,7 @@ interface ApiTransaction {
   amount: number;
   description: string | null;
   occurredAt: string;
+  recurringId?: string | null;
 }
 interface ApiGoal {
   id: string;
@@ -32,20 +33,74 @@ interface ApiGoal {
   category?: string;
 }
 
+function monthlyEquivalent(amount: number, frequency: string): number {
+  switch (frequency) {
+    case "daily": return amount * 30;
+    case "weekly": return amount * (52 / 12);
+    case "yearly": return amount / 12;
+    default: return amount;
+  }
+}
+
 async function fetchDashboard(): Promise<DashboardData> {
-  const [balanceRes, transactionsRes, categoriesRes, catSummaryRes, goalsRes] = await Promise.all([
-    api.get<{ data: BalanceData }>(`${apiEndpoints.summary.balance}?period=30d`),
-    api.get<{ data: ApiTransaction[] }>(`${apiEndpoints.transactions.list}?period=30d`),
-    api.get<{ data: CategoryItem[] }>(apiEndpoints.categories.list),
-    api.get<{ data: CategorySummaryItem[] }>(`${apiEndpoints.summary.categories}?period=30d`),
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  // dias corridos do mês atual até hoje (mínimo 1) — evita janela rolante de 30d misturar mês anterior
+  const period = `${now.getDate()}d`;
+
+  const [balanceRes, transactionsRes, categoriesRes, catSummaryRes, goalsRes, recurrencesRes] = await Promise.all([
+    api.get<{ data: BalanceData }>(`${apiEndpoints.summary.balance}?period=${period}`).catch(() => ({ data: { income: 0, expense: 0, balance: 0 } })),
+    api.get<{ data: ApiTransaction[] }>(`${apiEndpoints.transactions.list}?period=${period}`).catch(() => ({ data: [] as ApiTransaction[] })),
+    api.get<{ data: CategoryItem[] }>(apiEndpoints.categories.list).catch(() => ({ data: [] as CategoryItem[] })),
+    api.get<{ data: CategorySummaryItem[] }>(`${apiEndpoints.summary.categories}?period=${period}`).catch(() => ({ data: [] as CategorySummaryItem[] })),
     api.get<{ data: ApiGoal[] }>(apiEndpoints.goals.list).catch(() => ({ data: [] as ApiGoal[] })),
+    api.get<{ data: Recurrence[] }>(apiEndpoints.recurrences.active).catch(() => ({ data: [] as Recurrence[] })),
   ]);
 
-  const balance = balanceRes.data;
-  const transactions = transactionsRes.data;
+  const recurrences: Recurrence[] = recurrencesRes.data ?? [];
+
+  const transactions = transactionsRes.data.filter((t) => {
+    const d = new Date(t.occurredAt);
+    return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+  });
   const categories = categoriesRes.data;
-  const catSummary = catSummaryRes.data;
+  let catSummary = catSummaryRes.data;
   const apiGoals = goalsRes.data;
+
+  const paidRecurrenceIds = new Set(
+    transactions
+      .filter((t) => t.recurringId)
+      .map((t) => t.recurringId)
+  );
+
+  const unpaidRecurrences = recurrences.filter(
+    (r) => !paidRecurrenceIds.has(r.id)
+  );
+
+  const recurringIncome = unpaidRecurrences
+    .filter((r) => r.type === "INCOME")
+    .reduce((acc, r) => acc + monthlyEquivalent(r.amount, r.frequency), 0);
+
+  const recurringExpense = unpaidRecurrences
+    .filter((r) => r.type === "EXPENSE")
+    .reduce((acc, r) => acc + monthlyEquivalent(r.amount, r.frequency), 0);
+
+  const balance = {
+    income: balanceRes.data.income + recurringIncome,
+    expense: balanceRes.data.expense + recurringExpense,
+    balance: balanceRes.data.balance + recurringIncome - recurringExpense,
+  };
+
+  if (catSummary.length === 0 && unpaidRecurrences.length > 0) {
+    catSummary = unpaidRecurrences
+      .filter((r) => r.type === "EXPENSE")
+      .map((r) => ({
+        categoryId: r.categoryId,
+        income: 0,
+        expense: monthlyEquivalent(r.amount, r.frequency),
+      }));
+  }
 
   const catMap = new Map(categories.map((c) => [c.id, c.name]));
 
@@ -101,14 +156,23 @@ async function fetchDashboard(): Promise<DashboardData> {
       color: CHART_COLORS[i % CHART_COLORS.length],
     }));
 
-  const recentTransactions: Transaction[] = transactions.slice(0, 5).map((t) => ({
-    id: t.id,
-    description: t.description ?? "Sem descrição",
-    amount: t.type === "EXPENSE" ? -t.amount : t.amount,
-    date: new Date(t.occurredAt).toLocaleDateString("pt-BR"),
-    category: catMap.get(t.categoryId) ?? "Sem categoria",
-    type: t.type === "INCOME" ? "income" : "expense",
-  }));
+  const recentTransactions: Transaction[] = transactions.length > 0
+    ? transactions.slice(0, 5).map((t) => ({
+        id: t.id,
+        description: t.description ?? "Sem descrição",
+        amount: t.type === "EXPENSE" ? -t.amount : t.amount,
+        date: new Date(t.occurredAt).toLocaleDateString("pt-BR"),
+        category: catMap.get(t.categoryId) ?? "Sem categoria",
+        type: t.type === "INCOME" ? "income" : "expense",
+      }))
+    : unpaidRecurrences.slice(0, 5).map((r) => ({
+        id: r.id,
+        description: r.description ?? (r.type === "EXPENSE" ? "Despesa fixa" : "Receita fixa"),
+        amount: r.type === "EXPENSE" ? -r.amount : r.amount,
+        date: new Date(r.startDate).toLocaleDateString("pt-BR"),
+        category: catMap.get(r.categoryId) ?? "Sem categoria",
+        type: r.type === "INCOME" ? "income" : "expense",
+      }));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const goals: Goal[] = apiGoals.slice(0, 4).map((g: any) => ({

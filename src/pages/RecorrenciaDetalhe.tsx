@@ -15,12 +15,14 @@ import {
   Play,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveRecurrences } from "@/features/recurrences/hooks/use-recurrences";
 import { useCategories } from "@/features/categories/hooks/use-categories";
+import { api, apiEndpoints } from "@/lib/api/client";
 import type { Recurrence } from "@/shared/types";
 import { fmtBRL, fmtNumber } from "@/lib/format";
 
@@ -72,26 +74,31 @@ function addInterval(date: Date, frequency: Recurrence["frequency"]): Date {
   return d;
 }
 
-/** Returns all installment dates from startDate to endDate (inclusive). */
+/** Returns all installment dates from startDate to endDate (inclusive).
+ *  O endDate na API pode ser startDate + N meses (N = número de parcelas),
+ *  então calculamos diffMonths entre start e end, e esse é o total de parcelas.
+ *  Ex: jul/2026 a jul/2027 = 12 meses de diff = 12 parcelas (jul..jun).
+ */
 function buildInstallments(
   startDate: string,
   endDate: string,
   frequency: Recurrence["frequency"]
 ): Date[] {
   const dates: Date[] = [];
-  let current = parseLocalDate(startDate);
+  const start = parseLocalDate(startDate);
   const end = parseLocalDate(endDate);
-  let guard = 0;
-  while (current <= end && guard < 600) {
-    dates.push(new Date(current));
-    current = addInterval(current, frequency);
-    guard++;
+  const diffMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+  const departure = new Date(start);
+  for (let i = 0; i < diffMonths; i++) {
+    const parcelDate = new Date(departure.getFullYear(), departure.getMonth() + i, departure.getDate());
+    dates.push(parcelDate);
   }
+  console.log("buildInstallments result:", dates.map(d => `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`));
   return dates;
 }
 
-/** Returns next N occurrences from today. */
-function nextOccurrences(
+/** Returns occurrences from 12 months ago to next N occurrences. */
+function buildOccurrences(
   startDate: string,
   frequency: Recurrence["frequency"],
   count: number,
@@ -99,6 +106,8 @@ function nextOccurrences(
 ): Date[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const startWindow = new Date(today);
+  startWindow.setMonth(startWindow.getMonth() - 12);
   const end = endDate ? parseLocalDate(endDate) : null;
   const results: Date[] = [];
   let current = parseLocalDate(startDate);
@@ -106,7 +115,7 @@ function nextOccurrences(
 
   while (results.length < count && guard < 10000) {
     if (end && current > end) break;
-    if (current >= today) {
+    if (current >= startWindow) {
       results.push(new Date(current));
     }
     current = addInterval(current, frequency);
@@ -239,12 +248,14 @@ function PaymentCalendar({
   paymentDateSet,
   paidDates,
   isIncome,
+  hasPendingInMonth,
 }: {
   calMonth: Date;
   setCalMonth: (d: Date) => void;
   paymentDateSet: Set<string>;
   paidDates: Set<string>;
   isIncome: boolean;
+  hasPendingInMonth: boolean;
 }) {
   const year = calMonth.getFullYear();
   const month = calMonth.getMonth();
@@ -252,7 +263,7 @@ function PaymentCalendar({
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const todayStr = today.toISOString().split("T")[0];
+  const todayStr = toLocalDateStr(today);
 
   const prevMonth = () => {
     const d = new Date(calMonth);
@@ -271,12 +282,20 @@ function PaymentCalendar({
     ...Array(firstDay).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => {
       const d = new Date(year, month, i + 1);
-      return d.toISOString().split("T")[0];
+      return toLocalDateStr(d);
     }),
   ];
 
   return (
     <div className="space-y-3">
+      {/* Aviso de pendência no mês */}
+      {hasPendingInMonth && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-600 font-medium">
+          <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+          Este mês possui pagamento{paymentDateSet.size > 1 ? "s" : ""} pendente{paymentDateSet.size > 1 ? "s" : ""}
+        </div>
+      )}
+
       {/* Month nav */}
       <div className="flex items-center justify-between">
         <button type="button" onClick={prevMonth} className="p-1 rounded hover:bg-muted transition-colors">
@@ -303,20 +322,22 @@ function PaymentCalendar({
           const isPayment = paymentDateSet.has(dateStr);
           const isPaid = paidDates.has(dateStr);
           const isToday = dateStr === todayStr;
+          const isOverdue = isPayment && !isPaid && new Date(dateStr + "T12:00:00") < today;
           return (
             <div
               key={i}
               className={`relative flex flex-col items-center justify-center rounded-lg py-1 text-xs transition-colors
                 ${isToday ? "ring-1 ring-primary ring-offset-1" : ""}
-                ${isPayment && !isPaid ? (isIncome ? "bg-emerald-500/10" : "bg-red-500/10") : ""}
+                ${isOverdue ? "bg-red-100 ring-1 ring-red-300" : ""}
+                ${isPayment && !isPaid && !isOverdue ? (isIncome ? "bg-emerald-500/10" : "bg-red-500/10") : ""}
                 ${isPaid ? "bg-muted" : ""}
               `}
             >
-              <span className={`font-medium ${isToday ? "text-primary" : isPaid ? "text-muted-foreground line-through" : ""}`}>
+              <span className={`font-medium ${isToday ? "text-primary" : isOverdue ? "text-red-600" : isPaid ? "text-muted-foreground line-through" : ""}`}>
                 {day}
               </span>
               {isPayment && (
-                <span className={`w-1.5 h-1.5 rounded-full mt-0.5 ${isPaid ? "bg-muted-foreground" : isIncome ? "bg-emerald-500" : "bg-red-500"}`} />
+                <span className={`w-1.5 h-1.5 rounded-full mt-0.5 ${isPaid ? "bg-muted-foreground" : isOverdue ? "bg-red-600" : isIncome ? "bg-emerald-500" : "bg-red-500"}`} />
               )}
             </div>
           );
@@ -372,7 +393,7 @@ function PaymentList({
           </thead>
           <tbody className="divide-y divide-border">
             {allDates.map((date, i) => {
-              const dateStr = date.toISOString().split("T")[0];
+              const dateStr = toLocalDateStr(date);
               const isPaid = paidDates.has(dateStr);
               const isPast = date < today && !isPaid;
               const total = allDates.length;
@@ -426,7 +447,7 @@ const RecorrenciaDetalhePage = memo(() => {
   const navigate = useNavigate();
 
   // Feature state
-  const [paidDates, setPaidDates] = useState<Set<string>>(new Set());
+  const [localPaidDates, setLocalPaidDates] = useState<Set<string>>(new Set());
   const [calMonth, setCalMonth] = useState<Date>(() => {
     const d = new Date();
     d.setDate(1);
@@ -436,29 +457,55 @@ const RecorrenciaDetalhePage = memo(() => {
   const { recurrences, isLoading: recLoading } = useActiveRecurrences();
   const { categories, isLoading: catLoading } = useCategories();
 
+  // Busca transações reais vinculadas a esta recorrência para marcar como pagas
+  const { data: realTransactions = [] } = useQuery({
+    queryKey: ["recurrence-transactions", id],
+    queryFn: async () => {
+      try {
+        const res = await api.get<{ data: { id: string; occurredAt: string; amount: number; recurringId: string | null }[] }>(
+          apiEndpoints.transactions.list
+        );
+        return res.data?.filter((tx) => tx.recurringId === id) ?? [];
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const paidDates = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const real = new Set(
+      realTransactions
+        .filter((tx) => {
+          const txDate = new Date(tx.occurredAt);
+          return txDate <= today;
+        })
+        .map((tx) => toLocalDateStr(new Date(tx.occurredAt)))
+    );
+    localPaidDates.forEach((d) => real.add(d));
+    return real;
+  }, [realTransactions, localPaidDates]);
+
   const isLoading = recLoading || catLoading;
-
-  if (isLoading) {
-    return <LoadingSkeleton />;
-  }
-
   const rec = recurrences.find((r) => r.id === id);
 
-  if (!rec) {
-    return <NotFound onBack={() => navigate("/dashboard/recorrencias")} />;
-  }
-
-  const isIncome = rec.type === "INCOME";
-  const category = categories.find((c) => c.id === rec.categoryId);
+  const isIncome = rec?.type === "INCOME";
+  const category = categories.find((c) => c?.id === rec?.categoryId);
   const colorClass = isIncome ? "text-emerald-500" : "text-red-500";
   const bgClass = isIncome ? "bg-emerald-500/10" : "bg-red-500/10";
 
-  const startDisplay = new Date(rec.startDate).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
-  const endDisplay = rec.endDate
+  const startDisplay = rec
+    ? new Date(rec.startDate).toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })
+    : "";
+
+  const endDisplay = rec?.endDate
     ? new Date(rec.endDate).toLocaleDateString("pt-BR", {
         day: "2-digit",
         month: "long",
@@ -466,24 +513,37 @@ const RecorrenciaDetalhePage = memo(() => {
       })
     : null;
 
-  // All payment dates for this recurrence
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const allDates = useMemo<Date[]>(() => {
-    return rec.endDate
+    if (!rec) return [];
+    const dates = rec.endDate
       ? buildInstallments(rec.startDate, rec.endDate, rec.frequency)
-      : nextOccurrences(rec.startDate, rec.frequency, 24, undefined);
-  }, [rec.startDate, rec.endDate, rec.frequency]);
+      : buildOccurrences(rec.startDate, rec.frequency, 120, undefined);
+    return dates;
+  }, [rec?.startDate, rec?.endDate, rec?.frequency, rec?.id]);
 
-  // O(1) lookup set for calendar rendering
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const paymentDateSet = useMemo(
-    () => new Set(allDates.map((d) => d.toISOString().split("T")[0])),
+    () => new Set(allDates.map((d) => {
+      const str = toLocalDateStr(d);
+      return str;
+    })),
     [allDates]
   );
 
-  // Feature 3: simulate payment handler
+  console.log("Rec ID:", rec?.id, "| Total dates:", allDates.length, "| paymentDateSet:", Array.from(paymentDateSet).sort().slice(0, 14));
+
+  const hasPendingInMonth = useMemo(() => {
+    const year = calMonth.getFullYear();
+    const month = calMonth.getMonth();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Array.from(paymentDateSet).some((dateStr) => {
+      const d = new Date(dateStr + "T12:00:00");
+      return d.getFullYear() === year && d.getMonth() === month && d < today && !paidDates.has(dateStr);
+    });
+  }, [calMonth, paymentDateSet, paidDates]);
+
   const handleSimulate = (dateStr: string) => {
-    setPaidDates((prev) => {
+    setLocalPaidDates((prev) => {
       const next = new Set(prev);
       next.add(dateStr);
       return next;
@@ -492,6 +552,14 @@ const RecorrenciaDetalhePage = memo(() => {
       `Pagamento simulado para ${new Date(dateStr + "T12:00:00").toLocaleDateString("pt-BR")}`
     );
   };
+
+  if (isLoading) {
+    return <LoadingSkeleton />;
+  }
+
+  if (!rec) {
+    return <NotFound onBack={() => navigate("/dashboard/recorrencias")} />;
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 w-full">
@@ -631,6 +699,7 @@ const RecorrenciaDetalhePage = memo(() => {
               paymentDateSet={paymentDateSet}
               paidDates={paidDates}
               isIncome={isIncome}
+              hasPendingInMonth={hasPendingInMonth}
             />
           </CardContent>
         </Card>
@@ -656,10 +725,10 @@ const RecorrenciaDetalhePage = memo(() => {
               {/* Botão simular próximo */}
               {(() => {
                 const next = allDates.find(
-                  (d) => !paidDates.has(d.toISOString().split("T")[0])
+                  (d) => !paidDates.has(toLocalDateStr(d))
                 );
                 if (!next) return null;
-                const nextStr = next.toISOString().split("T")[0];
+                const nextStr = toLocalDateStr(next);
                 return (
                   <Button
                     size="sm"

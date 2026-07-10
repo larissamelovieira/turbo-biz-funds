@@ -105,13 +105,26 @@ const RecorrenciasPage = memo(() => {
     { ...defaultForm(), amount: "" } as RecurrencePayload & { amount: string }
   );
 
+  const monthlyEquivalent = (amount: number, frequency: string): number => {
+    switch (frequency) {
+      case "daily":
+        return amount * 30;
+      case "weekly":
+        return amount * (52 / 12);
+      case "yearly":
+        return amount / 12;
+      default:
+        return amount;
+    }
+  };
+
   const totalIncome = recurrences
     .filter((r) => r.type === "INCOME")
-    .reduce((acc, r) => acc + r.amount, 0);
+    .reduce((acc, r) => acc + monthlyEquivalent(r.amount, r.frequency), 0);
 
   const totalExpense = recurrences
     .filter((r) => r.type === "EXPENSE")
-    .reduce((acc, r) => acc + r.amount, 0);
+    .reduce((acc, r) => acc + monthlyEquivalent(r.amount, r.frequency), 0);
 
   const handleCreate = async () => {
     if (!form.categoryId || !form.amount || !form.startDate) {
@@ -171,6 +184,24 @@ const RecorrenciasPage = memo(() => {
         queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       } catch {
         toast.error("Erro ao criar parcelas — algumas podem ter sido salvas");
+        return;
+      }
+    } else {
+      // Mesma lógica do parcelado: recorrência sozinha não aparece no
+      // Relatório/Dashboard (que só leem /v1/transactions), então também
+      // lançamos a transação real referente à ocorrência atual.
+      try {
+        await api.post(apiEndpoints.transactions.create, {
+          categoryId: form.categoryId,
+          type: form.type,
+          amount: rawAmount,
+          description: form.description?.trim() || (form.type === "EXPENSE" ? "Despesa fixa" : "Receita fixa"),
+          occurredAt: payload.startDate,
+        });
+        queryClient.invalidateQueries({ queryKey: ["transactions"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      } catch {
+        toast.error("Erro ao lançar transação da recorrência");
         return;
       }
     }
@@ -275,7 +306,7 @@ const RecorrenciasPage = memo(() => {
                 <TrendingUp className="w-6 h-6 text-emerald-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Receitas Fixas</p>
+                <p className="text-sm text-muted-foreground">Receitas Fixas (mensal)</p>
                 <p className="text-2xl font-bold text-emerald-500">{fmtBRL(totalIncome)}</p>
               </div>
             </div>
@@ -289,7 +320,7 @@ const RecorrenciasPage = memo(() => {
                 <TrendingDown className="w-6 h-6 text-red-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Despesas Fixas</p>
+                <p className="text-sm text-muted-foreground">Despesas Fixas (mensal)</p>
                 <p className="text-2xl font-bold text-red-500">R$ {fmt(totalExpense)}</p>
               </div>
             </div>

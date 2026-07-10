@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   StatCard,
@@ -10,9 +10,31 @@ import {
   RecurrenceChart,
 } from "@/features/dashboard/components";
 import { useDashboardData } from "@/features/dashboard/hooks";
+import { useGenerateRecurrences } from "@/features/recurrences/hooks/use-recurrences";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+const RECURRENCES_SYNC_KEY = "recurrences-synced-month";
+
+function useSyncRecurrencesOnce(refetchDashboard: () => void) {
+  const generateRecurrences = useGenerateRecurrences();
+
+  useEffect(() => {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    if (sessionStorage.getItem(RECURRENCES_SYNC_KEY) === currentMonth) return;
+    sessionStorage.setItem(RECURRENCES_SYNC_KEY, currentMonth);
+    generateRecurrences.mutate(undefined, {
+      onSuccess: () => {
+        refetchDashboard();
+      },
+      onError: () => {
+        sessionStorage.removeItem(RECURRENCES_SYNC_KEY);
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
 
 const DashboardSkeleton = () => (
   <div className="p-4 sm:p-5 lg:p-6 xl:p-8 space-y-4 lg:space-y-5">
@@ -39,6 +61,7 @@ const DashboardSkeleton = () => (
 const UserDashboard = memo(() => {
   const { user } = useAuth();
   const { data: dashboardData, isLoading, isError, refetch } = useDashboardData();
+  useSyncRecurrencesOnce(refetch);
 
   const firstName = user?.name?.split(" ")[0]?.trim() || "Usuário";
 

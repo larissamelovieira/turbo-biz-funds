@@ -105,6 +105,7 @@ export function useGenerateRecurrences() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["recurrences"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }

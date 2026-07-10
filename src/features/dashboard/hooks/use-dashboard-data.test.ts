@@ -26,6 +26,7 @@ vi.mock("@/lib/api/client", () => ({
       if (url.includes("/v1/transactions")) return Promise.resolve({ data: mockTransactions });
       if (url.includes("/v1/summary/categories")) return Promise.resolve({ data: mockCatSummary });
       if (url.includes("/v1/goals")) return Promise.resolve({ data: [] });
+      if (url.includes("/v1/recurrences")) return Promise.resolve({ data: [] });
       if (url.includes("/v1/categories")) return Promise.resolve({ data: mockCategories });
       return Promise.reject(new Error("Unknown endpoint"));
     }),
@@ -35,6 +36,7 @@ vi.mock("@/lib/api/client", () => ({
     transactions: { list: "/v1/transactions" },
     categories: { list: "/v1/categories" },
     goals: { list: "/v1/goals" },
+    recurrences: { active: "/v1/recurrences/active" },
   },
 }));
 

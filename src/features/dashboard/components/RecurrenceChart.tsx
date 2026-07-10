@@ -34,13 +34,21 @@ async function fetchRecurrenceChartData(): Promise<RecurrenceChartData[]> {
 
   const catMap = new Map(categories.map((c) => [c.id, c.name]));
 
+  const monthlyEquivalent = (amount: number, frequency: string): number => {
+    switch (frequency) {
+      case "daily": return amount * 30;
+      case "weekly": return amount * (52 / 12);
+      case "yearly": return amount / 12;
+      default: return amount;
+    }
+  };
+
   const totals = new Map<string, number>();
   recurrences
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .filter((r) => ((r as any).isActive ?? r.active) && r.type === "EXPENSE")
+    .filter((r) => r.active && r.type === "EXPENSE")
     .forEach((r) => {
       const prev = totals.get(r.categoryId) ?? 0;
-      totals.set(r.categoryId, prev + r.amount);
+      totals.set(r.categoryId, prev + monthlyEquivalent(r.amount, r.frequency));
     });
 
   return Array.from(totals.entries())
