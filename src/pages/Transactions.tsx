@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { fmtBRL } from "@/lib/format";
+import type { Recurrence } from "@/shared/types";
 
 interface ApiTransaction {
   id: string;
@@ -26,11 +27,21 @@ interface ApiTransaction {
   amount: number;
   description: string | null;
   occurredAt: string;
+  recurringId?: string | null;
 }
 
 interface ApiCategory {
   id: string;
   name: string;
+}
+
+function monthlyEquivalent(amount: number, frequency: string): number {
+  switch (frequency) {
+    case "daily": return amount * 30;
+    case "weekly": return amount * (52 / 12);
+    case "yearly": return amount / 12;
+    default: return amount;
+  }
 }
 
 type Period = "weekly" | "15d" | "30d";
@@ -83,8 +94,15 @@ const TransactionsPage = memo(() => {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: recurrencesRes } = useQuery({
+    queryKey: ["recurrences", "active"],
+    queryFn: () => api.get<{ data: Recurrence[] }>(apiEndpoints.recurrences.active),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const transactions = transactionsRes?.data ?? [];
   const categories = categoriesRes?.data ?? [];
+  const recurrences = recurrencesRes?.data ?? [];
   const catMap = new Map(categories.map((c) => [c.id, c.name]));
 
   const filtered = transactions.filter((t) => {
@@ -98,8 +116,19 @@ const TransactionsPage = memo(() => {
     );
   });
 
-  const totalIncome = filtered.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amount, 0);
-  const totalExpense = filtered.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amount, 0);
+  const paidRecurrenceIds = new Set(
+    transactions.filter((t) => t.recurringId).map((t) => t.recurringId)
+  );
+  const unpaidRecurrences = recurrences.filter((r) => !paidRecurrenceIds.has(r.id));
+  const recurringIncome = unpaidRecurrences
+    .filter((r) => r.type === "INCOME")
+    .reduce((acc, r) => acc + monthlyEquivalent(r.amount, r.frequency), 0);
+  const recurringExpense = unpaidRecurrences
+    .filter((r) => r.type === "EXPENSE")
+    .reduce((acc, r) => acc + monthlyEquivalent(r.amount, r.frequency), 0);
+
+  const totalIncome = filtered.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amount, 0) + recurringIncome;
+  const totalExpense = filtered.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amount, 0) + recurringExpense;
   const balance = totalIncome - totalExpense;
 
 
