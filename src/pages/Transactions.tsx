@@ -100,7 +100,10 @@ const TransactionsPage = memo(() => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const transactions = transactionsRes?.data ?? [];
+  const now = new Date();
+  const transactions = (transactionsRes?.data ?? []).filter(
+    (t) => new Date(t.occurredAt).getTime() <= now.getTime()
+  );
   const categories = categoriesRes?.data ?? [];
   const recurrences = recurrencesRes?.data ?? [];
   const catMap = new Map(categories.map((c) => [c.id, c.name]));
