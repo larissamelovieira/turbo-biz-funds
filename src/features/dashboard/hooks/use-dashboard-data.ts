@@ -46,8 +46,8 @@ async function fetchDashboard(): Promise<DashboardData> {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
-  // dias corridos do mês atual até hoje (mínimo 1) — evita janela rolante de 30d misturar mês anterior
-  const period = `${now.getDate()}d`;
+  // backend só reconhece period fixo (weekly/15d/30d) — valores arbitrários voltam vazios
+  const period = "30d";
 
   const [balanceRes, transactionsRes, categoriesRes, catSummaryRes, goalsRes, recurrencesRes] = await Promise.all([
     api.get<{ data: BalanceData }>(`${apiEndpoints.summary.balance}?period=${period}`).catch(() => ({ data: { income: 0, expense: 0, balance: 0 } })),
