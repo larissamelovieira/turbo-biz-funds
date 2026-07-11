@@ -195,7 +195,7 @@ function computeNextDue(rec: Recurrence): Date | null {
 
   let iters = 0;
   while (cursor < today && iters < 2000) {
-    switch (rec.frequency) {
+    switch (rec.frequency?.toLowerCase()) {
       case "daily":   cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 1); break;
       case "weekly":  cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 7); break;
       case "monthly": cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, cursor.getDate()); break;
@@ -389,7 +389,9 @@ async function fetchClientSideNotifications(plan: string): Promise<UserNotificat
 
   const recurrences: Recurrence[] = Array.isArray(recRes)
     ? (recRes as unknown as Recurrence[])
-    : recRes.data ?? [];
+    : Array.isArray(recRes?.data)
+      ? recRes.data
+      : [];
 
   const subNotifs = buildSubscriptionNotifications(plan, sub);
   const recNotifs = buildRecurrenceNotifications(recurrences);

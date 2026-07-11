@@ -106,7 +106,7 @@ const RecorrenciasPage = memo(() => {
   );
 
   const monthlyEquivalent = (amount: number, frequency: string): number => {
-    switch (frequency) {
+    switch (frequency?.toLowerCase()) {
       case "daily":
         return amount * 30;
       case "weekly":

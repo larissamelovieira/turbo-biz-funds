@@ -26,7 +26,9 @@ async function fetchRecurrenceChartData(): Promise<RecurrenceChartData[]> {
 
   const recurrences: Recurrence[] = Array.isArray(recRes)
     ? (recRes as unknown as Recurrence[])
-    : recRes.data ?? [];
+    : Array.isArray(recRes?.data)
+      ? recRes.data
+      : [];
 
   const categories: CategoryItem[] = Array.isArray(catRes)
     ? (catRes as unknown as CategoryItem[])
@@ -35,7 +37,7 @@ async function fetchRecurrenceChartData(): Promise<RecurrenceChartData[]> {
   const catMap = new Map(categories.map((c) => [c.id, c.name]));
 
   const monthlyEquivalent = (amount: number, frequency: string): number => {
-    switch (frequency) {
+    switch (frequency?.toLowerCase()) {
       case "daily": return amount * 30;
       case "weekly": return amount * (52 / 12);
       case "yearly": return amount / 12;

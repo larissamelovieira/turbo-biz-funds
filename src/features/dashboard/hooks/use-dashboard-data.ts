@@ -34,7 +34,7 @@ interface ApiGoal {
 }
 
 function monthlyEquivalent(amount: number, frequency: string): number {
-  switch (frequency) {
+  switch (frequency?.toLowerCase()) {
     case "daily": return amount * 30;
     case "weekly": return amount * (52 / 12);
     case "yearly": return amount / 12;
@@ -58,7 +58,9 @@ async function fetchDashboard(): Promise<DashboardData> {
     api.get<{ data: Recurrence[] }>(apiEndpoints.recurrences.active).catch(() => ({ data: [] as Recurrence[] })),
   ]);
 
-  const recurrences: Recurrence[] = recurrencesRes.data ?? [];
+  const recurrences: Recurrence[] = Array.isArray(recurrencesRes?.data)
+    ? recurrencesRes.data
+    : [];
 
   const transactions = transactionsRes.data.filter((t) => {
     const d = new Date(t.occurredAt);

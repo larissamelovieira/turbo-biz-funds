@@ -42,6 +42,7 @@ interface ApiTransaction {
   amount: number;
   description: string | null;
   occurredAt: string;
+  recurringId?: string | null;
 }
 
 interface ApiCategory {
@@ -313,7 +314,7 @@ function RelatorioSkeleton() {
 
 export default function RelatorioPage() {
   const [selectedYear, setSelectedYear] = useState<number>(CURRENT_YEAR);
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(new Date().getMonth());
 
   // Fetch transactions (30d window — filtered client-side by year)
   const { data: transactionsRes, isLoading: isLoadingTransactions } = useQuery({
@@ -375,31 +376,63 @@ export default function RelatorioPage() {
   // transação real (ex: mês futuro), já que o backend só gera a transação
   // real quando o mês efetivamente chega. Considera todas as frequências,
   // não só mensal.
-  const projectedForMonth = (year: number, monthIdx: number) => {
+  // Recorrências ainda não pagas nesse mês (sem transação real com esse recurringId)
+  // — soma sobre o que já existe de real, não substitui. Considera todas as
+  // frequências, não só mensal.
+  // Itens (não só totais) das recorrências ainda não pagas nesse mês, pra
+  // poder listar junto das transações reais.
+  const unpaidRecurrenceEntriesForMonth = (
+    year: number,
+    monthIdx: number,
+    monthTxs: ApiTransaction[]
+  ): ApiTransaction[] => {
+    const paidRecurrenceIds = new Set(
+      monthTxs.filter((t) => t.recurringId).map((t) => t.recurringId)
+    );
     const monthStart = new Date(year, monthIdx, 1);
     const monthEnd = new Date(year, monthIdx + 1, 0);
     const daysInMonth = monthEnd.getDate();
-    let income = 0;
-    let expense = 0;
+    const entries: ApiTransaction[] = [];
     for (const r of recurrences) {
       if (!r.active) continue;
+      if (paidRecurrenceIds.has(r.id)) continue;
       const start = new Date(r.startDate);
       const end = r.endDate ? new Date(r.endDate) : null;
       if (start > monthEnd) continue;
       if (end && end < monthStart) continue;
 
+      const frequency = r.frequency?.toLowerCase();
       let occurrencesInMonth = 0;
-      if (r.frequency === "monthly") occurrencesInMonth = 1;
-      else if (r.frequency === "yearly") occurrencesInMonth = start.getMonth() === monthIdx ? 1 : 0;
-      else if (r.frequency === "weekly") occurrencesInMonth = daysInMonth / 7;
-      else if (r.frequency === "daily") occurrencesInMonth = daysInMonth;
+      if (frequency === "monthly") occurrencesInMonth = 1;
+      else if (frequency === "yearly") occurrencesInMonth = start.getMonth() === monthIdx ? 1 : 0;
+      else if (frequency === "weekly") occurrencesInMonth = daysInMonth / 7;
+      else if (frequency === "daily") occurrencesInMonth = daysInMonth;
 
       if (occurrencesInMonth === 0) continue;
       const value = r.amount * occurrencesInMonth;
-      if (r.type === "INCOME") income += value;
-      else expense += value;
+      entries.push({
+        id: `recurring-projected-${r.id}-${year}-${monthIdx}`,
+        categoryId: r.categoryId,
+        type: r.type,
+        amount: value,
+        description: `${r.description ?? "Recorrência"} (recorrência)`,
+        occurredAt: (start > monthStart ? start : monthStart).toISOString(),
+        recurringId: r.id,
+      });
     }
-    return { income, expense };
+    return entries;
+  };
+
+  const unpaidRecurrencesForMonth = (
+    year: number,
+    monthIdx: number,
+    monthTxs: ApiTransaction[]
+  ) => {
+    const entries = unpaidRecurrenceEntriesForMonth(year, monthIdx, monthTxs);
+    return {
+      income: entries.filter((e) => e.type === "INCOME").reduce((s, e) => s + e.amount, 0),
+      expense: entries.filter((e) => e.type === "EXPENSE").reduce((s, e) => s + e.amount, 0),
+    };
   };
 
   const hasRealDataForMonth = (year: number, monthIdx: number) =>
@@ -408,21 +441,20 @@ export default function RelatorioPage() {
       return d.getFullYear() === year && d.getMonth() === monthIdx;
     });
 
-  // Valor real ou projetado de um mês específico
+  // Valor real + recorrências ainda não pagas desse mês
   const monthlyValues = (year: number, monthIdx: number) => {
-    if (hasRealDataForMonth(year, monthIdx)) {
-      const monthTxs = allTransactions.filter((t) => {
-        const d = new Date(t.occurredAt);
-        return d.getFullYear() === year && d.getMonth() === monthIdx;
-      });
-      return {
-        income: monthTxs.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amount, 0),
-        expense: monthTxs.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amount, 0),
-        projected: false,
-      };
-    }
-    const proj = projectedForMonth(year, monthIdx);
-    return { ...proj, projected: proj.income > 0 || proj.expense > 0 };
+    const monthTxs = allTransactions.filter((t) => {
+      const d = new Date(t.occurredAt);
+      return d.getFullYear() === year && d.getMonth() === monthIdx;
+    });
+    const realIncome = monthTxs.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amount, 0);
+    const realExpense = monthTxs.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amount, 0);
+    const unpaid = unpaidRecurrencesForMonth(year, monthIdx, monthTxs);
+    return {
+      income: realIncome + unpaid.income,
+      expense: realExpense + unpaid.expense,
+      projected: unpaid.income > 0 || unpaid.expense > 0,
+    };
   };
 
   // Summary totals — soma todos os meses do período selecionado (mês único
@@ -438,7 +470,8 @@ export default function RelatorioPage() {
     : visibleMonths.reduce((s, m) => s + monthlyValues(selectedYear, m).expense, 0);
   const balance = totalIncome - totalExpense;
 
-  // Group by month (0-indexed)
+  // Group by month (0-indexed) — inclui transações reais + recorrências
+  // ainda não pagas desse mês (ex: parcela do mês que ainda não caiu).
   const transactionsByMonth = useMemo(() => {
     const map = new Map<number, ApiTransaction[]>();
     for (const t of filteredTransactions) {
@@ -446,6 +479,19 @@ export default function RelatorioPage() {
       const existing = map.get(month) ?? [];
       map.set(month, [...existing, t]);
     }
+
+    const monthsToCheck = selectedMonth !== null ? [selectedMonth] : visibleMonths;
+    for (const monthIdx of monthsToCheck) {
+      const monthTxs = allTransactions.filter((t) => {
+        const d = new Date(t.occurredAt);
+        return d.getFullYear() === selectedYear && d.getMonth() === monthIdx;
+      });
+      const unpaidEntries = unpaidRecurrenceEntriesForMonth(selectedYear, monthIdx, monthTxs);
+      if (unpaidEntries.length === 0) continue;
+      const existing = map.get(monthIdx) ?? [];
+      map.set(monthIdx, [...existing, ...unpaidEntries]);
+    }
+
     // Sort within each month by date descending
     for (const [key, txs] of map.entries()) {
       map.set(
@@ -457,7 +503,8 @@ export default function RelatorioPage() {
       );
     }
     return map;
-  }, [filteredTransactions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredTransactions, allTransactions, recurrences, selectedYear, selectedMonth, visibleMonths]);
 
   // Months present in data, sorted ascending
   const presentMonths = useMemo(

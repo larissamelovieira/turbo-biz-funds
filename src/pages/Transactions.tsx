@@ -36,7 +36,7 @@ interface ApiCategory {
 }
 
 function monthlyEquivalent(amount: number, frequency: string): number {
-  switch (frequency) {
+  switch (frequency?.toLowerCase()) {
     case "daily": return amount * 30;
     case "weekly": return amount * (52 / 12);
     case "yearly": return amount / 12;
@@ -360,6 +360,11 @@ const TransactionsPage = memo(() => {
                   month: "short",
                   year: "numeric",
                 });
+                const parcelaMatch = transaction.description?.match(/\s\((\d+\/\d+)\)$/);
+                const baseDescription = parcelaMatch
+                  ? transaction.description!.slice(0, parcelaMatch.index)
+                  : transaction.description;
+                const parcelaLabel = parcelaMatch?.[1];
                 return (
                   <div
                     key={transaction.id}
@@ -376,12 +381,17 @@ const TransactionsPage = memo(() => {
                       </div>
                       <div className="min-w-0">
                         <p className="font-medium text-foreground leading-tight text-sm truncate">
-                          {transaction.description ?? "Sem descrição"}
+                          {baseDescription ?? "Sem descrição"}
                         </p>
                         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                           <Badge variant="outline" className="text-xs px-2 py-0 h-5 bg-background font-normal shrink-0">
                             {catName}
                           </Badge>
+                          {parcelaLabel && (
+                            <Badge variant="outline" className="text-xs px-2 py-0 h-5 bg-background font-normal shrink-0">
+                              Parcela {parcelaLabel}
+                            </Badge>
+                          )}
                           <span className="text-xs text-muted-foreground whitespace-nowrap">{date}</span>
                         </div>
                       </div>
