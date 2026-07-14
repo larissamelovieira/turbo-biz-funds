@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { fmtBRL } from "@/lib/format";
-import type { Recurrence } from "@/shared/types";
+import { useActiveRecurrences } from "@/features/recurrences/hooks/use-recurrences";
 
 interface ApiTransaction {
   id: string;
@@ -94,21 +94,37 @@ const TransactionsPage = memo(() => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: recurrencesRes } = useQuery({
-    queryKey: ["recurrences", "active"],
-    queryFn: () => api.get<{ data: Recurrence[] }>(apiEndpoints.recurrences.active),
-    staleTime: 5 * 60 * 1000,
-  });
+  const { recurrences } = useActiveRecurrences();
 
   const now = new Date();
   const transactions = (transactionsRes?.data ?? []).filter(
     (t) => new Date(t.occurredAt).getTime() <= now.getTime()
   );
   const categories = categoriesRes?.data ?? [];
-  const recurrences = recurrencesRes?.data ?? [];
   const catMap = new Map(categories.map((c) => [c.id, c.name]));
 
-  const filtered = transactions.filter((t) => {
+  // Recorrências ativas ainda sem transação real lançada nesse período —
+  // viram entradas sintéticas pra que a lista e os cards batam (antes o
+  // card somava esse valor mas a lista nunca mostrava a linha correspondente).
+  const paidRecurrenceIds = new Set(
+    transactions.filter((t) => t.recurringId).map((t) => t.recurringId)
+  );
+  const unpaidRecurrenceEntries: (ApiTransaction & { isRecurringProjection?: boolean })[] = recurrences
+    .filter((r) => r.active !== false && !paidRecurrenceIds.has(r.id))
+    .map((r) => ({
+      id: `recurring-unpaid-${r.id}`,
+      categoryId: r.categoryId,
+      type: r.type,
+      amount: monthlyEquivalent(r.amount, r.frequency),
+      description: `${r.description || "Recorrência"} (recorrência)`,
+      occurredAt: new Date().toISOString(),
+      recurringId: r.id,
+      isRecurringProjection: true,
+    }));
+
+  const transactionsWithRecurring = [...transactions, ...unpaidRecurrenceEntries];
+
+  const filtered = transactionsWithRecurring.filter((t) => {
     if (typeFilter !== "ALL" && t.type !== typeFilter) return false;
     if (!search) return true;
     const catName = catMap.get(t.categoryId) ?? "";
@@ -119,19 +135,8 @@ const TransactionsPage = memo(() => {
     );
   });
 
-  const paidRecurrenceIds = new Set(
-    transactions.filter((t) => t.recurringId).map((t) => t.recurringId)
-  );
-  const unpaidRecurrences = recurrences.filter((r) => !paidRecurrenceIds.has(r.id));
-  const recurringIncome = unpaidRecurrences
-    .filter((r) => r.type === "INCOME")
-    .reduce((acc, r) => acc + monthlyEquivalent(r.amount, r.frequency), 0);
-  const recurringExpense = unpaidRecurrences
-    .filter((r) => r.type === "EXPENSE")
-    .reduce((acc, r) => acc + monthlyEquivalent(r.amount, r.frequency), 0);
-
-  const totalIncome = filtered.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amount, 0) + recurringIncome;
-  const totalExpense = filtered.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amount, 0) + recurringExpense;
+  const totalIncome = filtered.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amount, 0);
+  const totalExpense = filtered.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amount, 0);
   const balance = totalIncome - totalExpense;
 
 
@@ -365,6 +370,7 @@ const TransactionsPage = memo(() => {
                   ? transaction.description!.slice(0, parcelaMatch.index)
                   : transaction.description;
                 const parcelaLabel = parcelaMatch?.[1];
+                const isRecurringProjection = transaction.id.startsWith("recurring-unpaid-");
                 return (
                   <div
                     key={transaction.id}
@@ -392,6 +398,11 @@ const TransactionsPage = memo(() => {
                               Parcela {parcelaLabel}
                             </Badge>
                           )}
+                          {isRecurringProjection && (
+                            <Badge variant="outline" className="text-xs px-2 py-0 h-5 bg-background font-normal shrink-0">
+                              Ainda não lançada
+                            </Badge>
+                          )}
                           <span className="text-xs text-muted-foreground whitespace-nowrap">{date}</span>
                         </div>
                       </div>
@@ -403,16 +414,18 @@ const TransactionsPage = memo(() => {
                         </span>
                         <p className="text-xs text-muted-foreground capitalize hidden sm:block">{isIncome ? "receita" : "despesa"}</p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Remover transação"
-                        className="opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
-                        onClick={() => deleteMutation.mutate(transaction.id)}
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      {!isRecurringProjection && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Remover transação"
+                          className="opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                          onClick={() => deleteMutation.mutate(transaction.id)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 );

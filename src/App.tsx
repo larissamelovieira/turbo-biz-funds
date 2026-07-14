@@ -51,6 +51,14 @@ function AnalyticsTracker() {
   return null;
 }
 
+function RouteErrorBoundary({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  // Remonta o boundary a cada troca de rota — sem isso, um erro capturado
+  // numa tela fica preso mostrando "Ops!" até o usuário dar F5, mesmo
+  // clicando em outro item do menu.
+  return <ErrorBoundary key={location.pathname}>{children}</ErrorBoundary>;
+}
+
 const App = () => {
   const [queryClient] = useState(() => createQueryClient());
   return (
@@ -63,10 +71,12 @@ const App = () => {
           }}>
             <AuthProvider>
               <AnalyticsTracker />
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/*" element={<Suspense fallback={<AppLoading />}><AppShell /></Suspense>} />
-              </Routes>
+              <RouteErrorBoundary>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/*" element={<Suspense fallback={<AppLoading />}><AppShell /></Suspense>} />
+                </Routes>
+              </RouteErrorBoundary>
             </AuthProvider>
           </BrowserRouter>
         </QueryClientProvider>
