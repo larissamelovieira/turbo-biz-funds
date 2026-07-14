@@ -12,9 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckSquare,
-  Play,
 } from "lucide-react";
-import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -184,18 +182,18 @@ function ProjectionTable({
         <span className="text-muted-foreground">Total de parcelas</span>
         <span className="font-semibold">{total}</span>
       </div>
-      <div className="rounded-lg border border-border overflow-hidden">
+      <div className="rounded-xl border border-border overflow-hidden">
         <div className="max-h-72 overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 bg-muted">
               <tr>
-                <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs">
+                <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs uppercase tracking-wide">
                   Parcela
                 </th>
-                <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs">
+                <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs uppercase tracking-wide">
                   Vencimento
                 </th>
-                <th className="text-right px-3 py-2 font-medium text-muted-foreground text-xs">
+                <th className="text-right px-3 py-2.5 font-medium text-muted-foreground text-xs uppercase tracking-wide">
                   Valor
                 </th>
               </tr>
@@ -366,29 +364,30 @@ function PaymentList({
   amount,
   isIncome,
   paidDates,
-  onSimulate,
+  isFinite,
 }: {
   allDates: Date[];
   amount: number;
   isIncome: boolean;
   paidDates: Set<string>;
-  onSimulate: (dateStr: string) => void;
+  isFinite: boolean;
 }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const colorClass = isIncome ? "text-emerald-500" : "text-red-500";
 
   return (
-    <div className="rounded-lg border border-border overflow-hidden">
+    <div className="rounded-xl border border-border overflow-hidden">
       <div className="max-h-80 overflow-auto">
         <table className="w-full text-sm min-w-[360px]">
           <thead className="sticky top-0 z-10 bg-muted">
             <tr>
-              <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs">Parcela</th>
-              <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs">Vencimento</th>
-              <th className="text-right px-3 py-2 font-medium text-muted-foreground text-xs">Valor</th>
-              <th className="text-center px-3 py-2 font-medium text-muted-foreground text-xs">Status</th>
-              <th className="text-center px-3 py-2 font-medium text-muted-foreground text-xs">Ação</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                {isFinite ? "Parcela" : "Ocorrência"}
+              </th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted-foreground text-xs uppercase tracking-wide">Vencimento</th>
+              <th className="text-right px-3 py-2.5 font-medium text-muted-foreground text-xs uppercase tracking-wide">Valor</th>
+              <th className="text-center px-3 py-2.5 font-medium text-muted-foreground text-xs uppercase tracking-wide">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -399,7 +398,9 @@ function PaymentList({
               const total = allDates.length;
               return (
                 <tr key={i} className={`bg-background hover:bg-muted/30 transition-colors ${isPaid ? "opacity-60" : ""}`}>
-                  <td className="px-3 py-2 font-medium text-xs">{i + 1}{total > 1 ? `/${total}` : ""}</td>
+                  <td className="px-3 py-2 font-medium text-xs">
+                    {isFinite ? `${i + 1}${total > 1 ? `/${total}` : ""}` : i + 1}
+                  </td>
                   <td className="px-3 py-2 text-xs">{fmtDate(date)}</td>
                   <td className={`px-3 py-2 text-right font-semibold text-xs ${isPaid ? "text-muted-foreground line-through" : colorClass}`}>
                     R$ {fmt(amount)}
@@ -419,17 +420,6 @@ function PaymentList({
                       </Badge>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-center">
-                    {!isPaid && (
-                      <button
-                        type="button"
-                        onClick={() => onSimulate(dateStr)}
-                        className="text-xs px-2 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
-                      >
-                        Simular
-                      </button>
-                    )}
-                  </td>
                 </tr>
               );
             })}
@@ -447,7 +437,6 @@ const RecorrenciaDetalhePage = memo(() => {
   const navigate = useNavigate();
 
   // Feature state
-  const [localPaidDates, setLocalPaidDates] = useState<Set<string>>(new Set());
   const [calMonth, setCalMonth] = useState<Date>(() => {
     const d = new Date();
     d.setDate(1);
@@ -457,15 +446,41 @@ const RecorrenciaDetalhePage = memo(() => {
   const { recurrences, isLoading: recLoading } = useActiveRecurrences();
   const { categories, isLoading: catLoading } = useCategories();
 
-  // Busca transações reais vinculadas a esta recorrência para marcar como pagas
-  const { data: realTransactions = [] } = useQuery({
-    queryKey: ["recurrence-transactions", id],
+  const isLoading = recLoading || catLoading;
+  const rec = recurrences.find((r) => r.id === id);
+
+  const allDates = useMemo<Date[]>(() => {
+    if (!rec) return [];
+    const dates = rec.endDate
+      ? buildInstallments(rec.startDate, rec.endDate, rec.frequency)
+      : buildOccurrences(rec.startDate, rec.frequency, 24, undefined);
+    return dates;
+  }, [rec?.startDate, rec?.endDate, rec?.frequency, rec?.id]);
+
+  const paymentDateSet = useMemo(
+    () => new Set(allDates.map((d) => toLocalDateStr(d))),
+    [allDates]
+  );
+
+  // Busca transações reais pra marcar parcelas como pagas. Parcelas de
+  // "Compra parcelada" são lançadas como transações comuns (o backend não
+  // preenche recurringId nesse fluxo), então além do vínculo por recurringId
+  // também casamos por categoria + tipo + data prevista da parcela.
+  const { data: allRealTransactions = [] } = useQuery({
+    queryKey: ["transactions", "all-for-recurrence"],
     queryFn: async () => {
       try {
-        const res = await api.get<{ data: { id: string; occurredAt: string; amount: number; recurringId: string | null }[] }>(
-          apiEndpoints.transactions.list
-        );
-        return res.data?.filter((tx) => tx.recurringId === id) ?? [];
+        const res = await api.get<{
+          data: {
+            id: string;
+            categoryId: string;
+            type: "INCOME" | "EXPENSE";
+            occurredAt: string;
+            amount: number;
+            recurringId?: string | null;
+          }[];
+        }>(apiEndpoints.transactions.list);
+        return res.data ?? [];
       } catch {
         return [];
       }
@@ -474,10 +489,19 @@ const RecorrenciaDetalhePage = memo(() => {
     staleTime: 2 * 60 * 1000,
   });
 
+  const realTransactions = useMemo(() => {
+    if (!rec) return [];
+    return allRealTransactions.filter((tx) => {
+      if (tx.recurringId === id) return true;
+      if (tx.categoryId !== rec.categoryId || tx.type !== rec.type) return false;
+      return paymentDateSet.has(toLocalDateStr(new Date(tx.occurredAt)));
+    });
+  }, [allRealTransactions, rec, id, paymentDateSet]);
+
   const paidDates = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const real = new Set(
+    return new Set(
       realTransactions
         .filter((tx) => {
           const txDate = new Date(tx.occurredAt);
@@ -485,12 +509,7 @@ const RecorrenciaDetalhePage = memo(() => {
         })
         .map((tx) => toLocalDateStr(new Date(tx.occurredAt)))
     );
-    localPaidDates.forEach((d) => real.add(d));
-    return real;
-  }, [realTransactions, localPaidDates]);
-
-  const isLoading = recLoading || catLoading;
-  const rec = recurrences.find((r) => r.id === id);
+  }, [realTransactions]);
 
   const isIncome = rec?.type === "INCOME";
   const category = categories.find((c) => c?.id === rec?.categoryId);
@@ -513,24 +532,6 @@ const RecorrenciaDetalhePage = memo(() => {
       })
     : null;
 
-  const allDates = useMemo<Date[]>(() => {
-    if (!rec) return [];
-    const dates = rec.endDate
-      ? buildInstallments(rec.startDate, rec.endDate, rec.frequency)
-      : buildOccurrences(rec.startDate, rec.frequency, 120, undefined);
-    return dates;
-  }, [rec?.startDate, rec?.endDate, rec?.frequency, rec?.id]);
-
-  const paymentDateSet = useMemo(
-    () => new Set(allDates.map((d) => {
-      const str = toLocalDateStr(d);
-      return str;
-    })),
-    [allDates]
-  );
-
-  console.log("Rec ID:", rec?.id, "| Total dates:", allDates.length, "| paymentDateSet:", Array.from(paymentDateSet).sort().slice(0, 14));
-
   const hasPendingInMonth = useMemo(() => {
     const year = calMonth.getFullYear();
     const month = calMonth.getMonth();
@@ -541,17 +542,6 @@ const RecorrenciaDetalhePage = memo(() => {
       return d.getFullYear() === year && d.getMonth() === month && d < today && !paidDates.has(dateStr);
     });
   }, [calMonth, paymentDateSet, paidDates]);
-
-  const handleSimulate = (dateStr: string) => {
-    setLocalPaidDates((prev) => {
-      const next = new Set(prev);
-      next.add(dateStr);
-      return next;
-    });
-    toast.success(
-      `Pagamento simulado para ${new Date(dateStr + "T12:00:00").toLocaleDateString("pt-BR")}`
-    );
-  };
 
   if (isLoading) {
     return <LoadingSkeleton />;
@@ -575,21 +565,23 @@ const RecorrenciaDetalhePage = memo(() => {
       </Button>
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8 pb-6 border-b border-border/60">
         <div
-          className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${bgClass}`}
+          className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ring-1 ${
+            isIncome ? "ring-emerald-500/20" : "ring-red-500/20"
+          } ${bgClass}`}
         >
           {isIncome ? (
-            <TrendingUp className={`w-6 h-6 ${colorClass}`} />
+            <TrendingUp className={`w-7 h-7 ${colorClass}`} strokeWidth={2.25} />
           ) : (
-            <TrendingDown className={`w-6 h-6 ${colorClass}`} />
+            <TrendingDown className={`w-7 h-7 ${colorClass}`} strokeWidth={2.25} />
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-semibold text-foreground truncate">
+          <h1 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight truncate">
             {rec.description || category?.name || "Sem descrição"}
           </h1>
-          <div className="flex flex-wrap items-center gap-2 mt-1.5">
+          <div className="flex flex-wrap items-center gap-2 mt-2">
             <Badge
               variant="outline"
               className={`text-xs font-medium ${
@@ -600,75 +592,97 @@ const RecorrenciaDetalhePage = memo(() => {
             >
               {isIncome ? "Receita" : "Despesa"}
             </Badge>
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs gap-1">
+              <Repeat className="w-3 h-3" />
               {FREQUENCY_LABELS[rec.frequency]}
             </Badge>
           </div>
         </div>
       </div>
 
-      {/* ── Seção 1: Informações + Calendário ── */}
-      <div className="grid gap-6 lg:grid-cols-2 mb-6">
+      {/* ── Seção 1: Informações (+ Calendário, só despesa) ── */}
+      <div className={`grid gap-6 mb-6 ${isIncome ? "justify-items-center" : "lg:grid-cols-2"}`}>
         {/* Card Informações */}
-        <Card className="border-border shadow-sm">
+        <Card className={`border-border shadow-sm w-full ${isIncome ? "max-w-2xl" : ""}`}>
           <CardHeader className="pb-4">
             <CardTitle className="text-base font-semibold">Informações</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-5">
             {/* Valor destacado */}
-            <div className="flex items-center justify-between py-3 px-4 rounded-xl border border-border bg-muted/30">
-              <span className="text-sm text-muted-foreground font-medium">Valor da parcela</span>
-              <span className={`text-xl sm:text-2xl font-bold ${colorClass}`}>
+            <div
+              className={`relative overflow-hidden flex items-center justify-between py-4 px-5 rounded-2xl border ${
+                isIncome ? "border-emerald-200/60 bg-emerald-500/[0.06]" : "border-red-200/60 bg-red-500/[0.06]"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${bgClass}`}>
+                  {isIncome ? (
+                    <TrendingUp className={`w-5 h-5 ${colorClass}`} />
+                  ) : (
+                    <TrendingDown className={`w-5 h-5 ${colorClass}`} />
+                  )}
+                </div>
+                <span className="text-sm text-muted-foreground font-medium">
+                  {rec.endDate ? "Valor da parcela" : "Valor recorrente"}
+                </span>
+              </div>
+              <span className={`text-2xl sm:text-3xl font-bold tracking-tight ${colorClass}`}>
                 {isIncome ? "+" : "-"}R$ {fmt(rec.amount)}
               </span>
             </div>
 
             {/* Detalhes */}
-            <div className="space-y-3 text-sm">
-              <div className="flex items-start justify-between gap-4">
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <span className="w-4 h-4 shrink-0 inline-flex items-center justify-center">
+            <div className="divide-y divide-border/70">
+              <div className="flex items-center justify-between gap-4 py-3 first:pt-0">
+                <span className="text-sm text-muted-foreground flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0 text-sm">
                     🏷️
                   </span>
                   Categoria
                 </span>
-                <span className="font-medium text-right">
+                <span className="text-sm font-medium text-right">
                   {category?.name ?? (
                     <span className="text-muted-foreground italic">Sem categoria</span>
                   )}
                 </span>
               </div>
 
-              <div className="flex items-start justify-between gap-4">
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <Repeat className="w-4 h-4 shrink-0" />
+              <div className="flex items-center justify-between gap-4 py-3">
+                <span className="text-sm text-muted-foreground flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <Repeat className="w-3.5 h-3.5" />
+                  </span>
                   Frequência
                 </span>
-                <span className="font-medium">{FREQUENCY_LABELS[rec.frequency]}</span>
+                <span className="text-sm font-medium">{FREQUENCY_LABELS[rec.frequency]}</span>
               </div>
 
-              <div className="flex items-start justify-between gap-4">
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 shrink-0" />
+              <div className="flex items-center justify-between gap-4 py-3">
+                <span className="text-sm text-muted-foreground flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <Calendar className="w-3.5 h-3.5" />
+                  </span>
                   Início
                 </span>
-                <span className="font-medium text-right">{startDisplay}</span>
+                <span className="text-sm font-medium text-right">{startDisplay}</span>
               </div>
 
-              <div className="flex items-start justify-between gap-4">
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <CalendarOff className="w-4 h-4 shrink-0" />
+              <div className="flex items-center justify-between gap-4 py-3">
+                <span className="text-sm text-muted-foreground flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <CalendarOff className="w-3.5 h-3.5" />
+                  </span>
                   Término
                 </span>
-                <span className="font-medium text-right">
+                <span className="text-sm font-medium text-right">
                   {endDisplay ?? (
                     <span className="text-muted-foreground italic">Sem data de término</span>
                   )}
                 </span>
               </div>
 
-              <div className="flex items-start justify-between gap-4">
-                <span className="text-muted-foreground">Status</span>
+              <div className="flex items-center justify-between gap-4 py-3 last:pb-0">
+                <span className="text-sm text-muted-foreground">Status</span>
                 <Badge
                   variant="outline"
                   className={
@@ -681,38 +695,62 @@ const RecorrenciaDetalhePage = memo(() => {
                 </Badge>
               </div>
             </div>
+
+            {/* Elemento secundário — só receita, evita card vazio em telas largas */}
+            {isIncome && (
+              <div className="flex items-center gap-3 pt-1 px-4 py-3 rounded-xl bg-muted/40 border border-border/60">
+                <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                  {rec.endDate ? (
+                    <CalendarOff className="w-4 h-4 text-emerald-600" />
+                  ) : (
+                    <InfinityIcon className="w-4 h-4 text-emerald-600" />
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground leading-snug">
+                  {rec.endDate
+                    ? `Receita programada até ${endDisplay}, gerada automaticamente a cada ciclo ${FREQUENCY_LABELS[rec.frequency].toLowerCase()}.`
+                    : `Receita contínua, sem data de término — gerada automaticamente a cada ciclo ${FREQUENCY_LABELS[rec.frequency].toLowerCase()}.`}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Card Calendário de Pagamentos */}
-        <Card className="border-border shadow-sm">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-muted-foreground" />
-              <CardTitle className="text-base font-semibold">Calendário de Pagamentos</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <PaymentCalendar
-              calMonth={calMonth}
-              setCalMonth={setCalMonth}
-              paymentDateSet={paymentDateSet}
-              paidDates={paidDates}
-              isIncome={isIncome}
-              hasPendingInMonth={hasPendingInMonth}
-            />
-          </CardContent>
-        </Card>
+        {/* Card Calendário de Pagamentos — só despesa */}
+        {!isIncome && (
+          <Card className="border-border shadow-sm">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                  <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                </div>
+                <CardTitle className="text-base font-semibold">Calendário de Pagamentos</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <PaymentCalendar
+                calMonth={calMonth}
+                setCalMonth={setCalMonth}
+                paymentDateSet={paymentDateSet}
+                paidDates={paidDates}
+                isIncome={isIncome}
+                hasPendingInMonth={hasPendingInMonth}
+              />
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      {/* ── Seção 2: Listagem + Projeção ── */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Card Listagem de Pagamentos */}
-        <Card className="border-border shadow-sm">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
+      {/* ── Seção 2: Listagem + Projeção — só despesa ── */}
+      {!isIncome && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Card Listagem de Pagamentos */}
+          <Card className="border-border shadow-sm">
+            <CardHeader className="pb-4">
               <div className="flex items-center gap-2">
-                <CheckSquare className="w-4 h-4 text-muted-foreground" />
+                <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                  <CheckSquare className="w-3.5 h-3.5 text-muted-foreground" />
+                </div>
                 <CardTitle className="text-base font-semibold">
                   Listagem de Pagamentos
                   {paidDates.size > 0 && (
@@ -722,63 +760,49 @@ const RecorrenciaDetalhePage = memo(() => {
                   )}
                 </CardTitle>
               </div>
-              {/* Botão simular próximo */}
-              {(() => {
-                const next = allDates.find(
-                  (d) => !paidDates.has(toLocalDateStr(d))
-                );
-                if (!next) return null;
-                const nextStr = toLocalDateStr(next);
-                return (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-1.5"
-                    onClick={() => handleSimulate(nextStr)}
-                  >
-                    <Play className="w-3.5 h-3.5" />
-                    Simular próximo
-                  </Button>
-                );
-              })()}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <PaymentList
-              allDates={allDates}
-              amount={rec.amount}
-              isIncome={isIncome}
-              paidDates={paidDates}
-              onSimulate={handleSimulate}
-            />
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              <PaymentList
+                allDates={allDates}
+                amount={rec.amount}
+                isIncome={isIncome}
+                paidDates={paidDates}
+                isFinite={!!rec.endDate}
+              />
+            </CardContent>
+          </Card>
 
-        {/* Card Projeção */}
-        <Card className="border-border shadow-sm">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base font-semibold">Projeção</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {rec.endDate ? (
-              <ProjectionTable rec={rec} amount={rec.amount} />
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
-                  <InfinityIcon className="w-6 h-6 text-muted-foreground" />
+          {/* Card Projeção */}
+          <Card className="border-border shadow-sm">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                  <InfinityIcon className="w-3.5 h-3.5 text-muted-foreground" />
                 </div>
-                <div>
-                  <p className="font-medium text-sm">Recorrência contínua</p>
-                  <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-                    Esta recorrência não possui data de término definida e continuará sendo
-                    gerada automaticamente.
-                  </p>
-                </div>
+                <CardTitle className="text-base font-semibold">Projeção</CardTitle>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </CardHeader>
+            <CardContent>
+              {rec.endDate ? (
+                <ProjectionTable rec={rec} amount={rec.amount} />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ring-1 ${bgClass} ${isIncome ? "ring-emerald-500/20" : "ring-red-500/20"}`}>
+                    <InfinityIcon className={`w-7 h-7 ${colorClass}`} />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">Recorrência contínua</p>
+                    <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+                      Esta recorrência não possui data de término definida e continuará sendo
+                      gerada automaticamente.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 });

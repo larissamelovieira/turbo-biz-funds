@@ -66,10 +66,6 @@ interface Recurrence {
 
 const CURRENT_YEAR = new Date().getFullYear();
 const START_YEAR = 2026;
-const AVAILABLE_YEARS = Array.from(
-  { length: CURRENT_YEAR - START_YEAR + 1 },
-  (_, i) => START_YEAR + i
-);
 
 const MONTH_NAMES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -348,6 +344,23 @@ export default function RelatorioPage() {
     [categories]
   );
 
+  // Anos disponíveis — inclui anos futuros alcançados por parcelas de
+  // recorrências (ex: compra parcelada em 24x pode terminar 2 anos à frente).
+  const availableYears = useMemo(() => {
+    let maxYear = CURRENT_YEAR;
+    for (const r of recurrences) {
+      if (r.endDate) {
+        const y = new Date(r.endDate).getFullYear();
+        if (y > maxYear) maxYear = y;
+      }
+    }
+    for (const t of allTransactions) {
+      const y = new Date(t.occurredAt).getFullYear();
+      if (y > maxYear) maxYear = y;
+    }
+    return Array.from({ length: maxYear - START_YEAR + 1 }, (_, i) => START_YEAR + i);
+  }, [recurrences, allTransactions]);
+
   // Filter transactions by selected year
   const yearTransactions = useMemo(
     () =>
@@ -512,6 +525,18 @@ export default function RelatorioPage() {
     [transactionsByMonth]
   );
 
+  // Total exibido na lista — inclui transações reais + parcelas/recorrências
+  // projetadas ainda não pagas, senão a contagem e o "sem transações" ficam
+  // fora de sincronia com o que os cards de resumo mostram.
+  const totalDisplayedCount = useMemo(
+    () =>
+      Array.from(transactionsByMonth.values()).reduce(
+        (s, txs) => s + txs.length,
+        0
+      ),
+    [transactionsByMonth]
+  );
+
   // Chart data — uses yearTransactions (full year, ignores month filter).
   // Meses sem transação real usam projeção de recorrências ativas.
   const chartData = useMemo(() => {
@@ -601,7 +626,7 @@ export default function RelatorioPage() {
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium text-muted-foreground">Ano:</span>
         <div className="flex gap-1.5 bg-muted/50 rounded-lg p-1 border border-border">
-          {AVAILABLE_YEARS.map((year) => (
+          {availableYears.map((year) => (
             <button
               key={year}
               type="button"
@@ -732,7 +757,7 @@ export default function RelatorioPage() {
               </h3>
             </div>
             <span className="text-sm text-muted-foreground">
-              {filteredTransactions.length} transaç{filteredTransactions.length === 1 ? "ão" : "ões"}
+              {totalDisplayedCount} transaç{totalDisplayedCount === 1 ? "ão" : "ões"}
             </span>
           </div>
 
@@ -808,7 +833,7 @@ export default function RelatorioPage() {
 
             {/* RIGHT: list */}
             <div className="max-h-[320px] overflow-y-auto pr-1 space-y-3">
-              {filteredTransactions.length === 0 ? (
+              {totalDisplayedCount === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
                   <BarChart2 className="w-12 h-12 mx-auto mb-3 opacity-20" />
                   <p className="font-medium">Nenhuma transação encontrada</p>

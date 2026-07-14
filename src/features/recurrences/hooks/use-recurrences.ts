@@ -10,7 +10,7 @@ function mapRecurrence(raw: any): Recurrence {
     type: raw.type,
     amount: raw.amount ?? 0,
     description: raw.description,
-    frequency: raw.frequency,
+    frequency: typeof raw.frequency === "string" ? raw.frequency.toLowerCase() : raw.frequency,
     startDate: raw.startDate ?? raw.start_date ?? "",
     endDate: raw.endDate ?? raw.end_date,
     active: raw.active ?? true,
