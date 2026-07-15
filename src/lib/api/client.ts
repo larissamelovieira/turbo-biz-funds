@@ -167,6 +167,8 @@ export const apiEndpoints = {
     logout: "/v1/auth/logout",
     forgotPassword: "/v1/auth/forgot-password",
     resetPassword: "/v1/auth/reset-password",
+    checkEmail: "/v1/auth/check-email",
+    resetPasswordDirect: "/v1/auth/reset-password-direct",
   },
   categories: {
     list: "/v1/categories",

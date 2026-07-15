@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, ArrowRight, Loader2, ArrowLeft, CheckCircle2, MessageCircle, BarChart3, Brain, CreditCard, Repeat2, Wallet } from "lucide-react";
+import { Mail, ArrowRight, Loader2, ArrowLeft, MessageCircle, BarChart3, Brain, CreditCard, Repeat2, Wallet } from "lucide-react";
 import { api, apiEndpoints } from "@/lib/api/client";
 import { forgotPasswordSchema } from "@/features/auth/schemas/auth.schema";
 import { AUTH_BG, AUTH_LOGO } from "@/features/auth/constants";
@@ -64,10 +64,10 @@ const GlassCard = ({ children }: { children: React.ReactNode }) => (
 );
 
 const ForgotPassword = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
-  const [sent, setSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,53 +79,18 @@ const ForgotPassword = () => {
     setEmailError(undefined);
     setIsLoading(true);
     try {
-      await api.post(apiEndpoints.auth.forgotPassword, { email });
+      const res = await api.post<{ data: { exists: boolean } }>(apiEndpoints.auth.checkEmail, { email });
+      if (res?.data?.exists) {
+        navigate(`/redefinir-senha?email=${encodeURIComponent(email)}`);
+        return;
+      }
+      setEmailError("Email não cadastrado");
     } catch {
-      // Não diferenciamos erros para evitar enumeração de usuários.
+      setEmailError("Erro ao verificar email. Tente novamente.");
     } finally {
       setIsLoading(false);
-      setSent(true);
     }
   };
-
-  if (sent) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{ background: AUTH_BG }}>
-        <OrbStyles />
-        <Orbs />
-        <div className="w-full max-w-md text-center relative z-10">
-          <Link to="/" className="inline-flex items-center gap-3 mb-8 group">
-            <img src={AUTH_LOGO} alt="doutorcash" className="h-12 w-auto transition-transform group-hover:scale-105" />
-          </Link>
-          <GlassCard>
-            <div className="space-y-5 text-center">
-              <div className="flex justify-center">
-                <div className="w-16 h-16 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center">
-                  <CheckCircle2 className="w-8 h-8 text-green-400" />
-                </div>
-              </div>
-              <div>
-                <p className="text-lg font-bold text-white">Verifique seu email</p>
-                <p className="text-sm text-white/50 mt-1">
-                  Se <span className="font-semibold text-white/80">{email}</span> estiver cadastrado, você receberá um link em instantes. Verifique também a caixa de spam.
-                </p>
-              </div>
-              <Link to="/login">
-                <button
-                  type="button"
-                  className="w-full h-11 rounded-xl font-bold text-white text-sm flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98]"
-                  style={{ background: "linear-gradient(135deg, #1B4DBF, #0B1F3A)", boxShadow: "0 0 20px rgba(27,77,191,0.4)" }}
-                >
-                  Voltar para o login
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </Link>
-            </div>
-          </GlassCard>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{ background: AUTH_BG }}>
@@ -177,7 +142,7 @@ const ForgotPassword = () => {
               style={{ background: "linear-gradient(135deg, #1B4DBF, #0B1F3A)", boxShadow: "0 0 20px rgba(27,77,191,0.4)" }}
             >
               {isLoading
-                ? <><Loader2 className="w-4 h-4 animate-spin" />Enviando...</>
+                ? <><Loader2 className="w-4 h-4 animate-spin" />Verificando...</>
                 : <>Continuar<ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>

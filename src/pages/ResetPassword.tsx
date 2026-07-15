@@ -76,7 +76,7 @@ const GlassCard = ({ children }: { children: React.ReactNode }) => (
 const ResetPassword = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get("token") ?? "";
+  const email = searchParams.get("email") ?? "";
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -85,7 +85,7 @@ const ResetPassword = () => {
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  if (!token) {
+  if (!email) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{ background: AUTH_BG }}>
         <OrbStyles />
@@ -102,9 +102,9 @@ const ResetPassword = () => {
                 </div>
               </div>
               <div>
-                <p className="text-lg font-bold text-white">Link inválido</p>
+                <p className="text-lg font-bold text-white">Sessão inválida</p>
                 <p className="text-sm text-white/50 mt-1">
-                  Este link de redefinição é inválido ou expirou. Solicite um novo link.
+                  Informe seu email novamente pra redefinir a senha.
                 </p>
               </div>
               <button
@@ -113,7 +113,7 @@ const ResetPassword = () => {
                 className="w-full h-11 rounded-xl font-bold text-white text-sm flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98]"
                 style={{ background: "linear-gradient(135deg, #1B4DBF, #0B1F3A)", boxShadow: "0 0 20px rgba(27,77,191,0.4)" }}
               >
-                Solicitar novo link <ArrowRight className="w-4 h-4" />
+                Voltar <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </GlassCard>
@@ -137,12 +137,12 @@ const ResetPassword = () => {
     setErrors({});
     setIsLoading(true);
     try {
-      await api.post(apiEndpoints.auth.resetPassword, { token, password });
+      await api.post(apiEndpoints.auth.resetPasswordDirect, { email, password });
       setSuccess(true);
     } catch (err: unknown) {
       const apiErr = err as { status?: number; message?: string };
-      if (apiErr?.status === 400 || apiErr?.status === 422 || apiErr?.status === 404) {
-        toast.error("Link inválido ou expirado. Solicite um novo link.");
+      if (apiErr?.status === 404) {
+        toast.error("Email não encontrado. Solicite novamente.");
         navigate("/recuperar-senha");
         return;
       }
