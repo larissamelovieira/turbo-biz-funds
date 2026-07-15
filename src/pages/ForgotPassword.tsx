@@ -122,11 +122,6 @@ const ForgotPassword = () => {
               </Link>
             </div>
           </GlassCard>
-          <p className="text-center text-white/60 mt-6">
-            <Link to="/login" className="inline-flex items-center gap-1 text-[#E5E7EB] font-medium hover:text-white transition-colors">
-              <ArrowLeft className="w-4 h-4" /> Voltar para o login
-            </Link>
-          </p>
         </div>
       </div>
     );

@@ -19,7 +19,12 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { useGoals, useCreateGoal, useDeleteGoal, useUpdateGoal } from "@/features/goals/hooks/use-goals";
+import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useCreateTransaction } from "@/features/transactions/hooks/use-transactions";
+import { api, apiEndpoints } from "@/lib/api/client";
+import type { ApiCategory } from "@/shared/types";
 import { fmtBRL } from "@/lib/format";
 
 const GOAL_COLORS = [
@@ -38,10 +43,13 @@ const GoalsPageSkeleton = () => (
 );
 
 const GoalsPage = memo(() => {
+  const queryClient = useQueryClient();
   const { goals, isLoading, isError, error, refetch } = useGoals();
   const createGoal = useCreateGoal();
   const deleteGoal = useDeleteGoal();
   const updateGoal = useUpdateGoal();
+  const { categories } = useCategories();
+  const createTransaction = useCreateTransaction();
 
   const prevGoalsRef = useRef<typeof goals>([]);
   useEffect(() => {
@@ -56,8 +64,9 @@ const GoalsPage = memo(() => {
   }, [goals]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editGoal, setEditGoal] = useState<{ id: string; name: string; current: number; target: number } | null>(null);
+  const [editGoal, setEditGoal] = useState<{ id: string; name: string; current: number; target: number; category: string } | null>(null);
   const [editCurrentValue, setEditCurrentValue] = useState("");
+  const [isAddingContribution, setIsAddingContribution] = useState(false);
   const [form, setForm] = useState({
     name: "",
     target: "",
@@ -123,32 +132,52 @@ const GoalsPage = memo(() => {
     );
   };
 
-  const handleUpdateProgress = () => {
+  const handleAddContribution = async () => {
     if (!editGoal) return;
-    const value = parseFloat(editCurrentValue.replace(",", "."));
-    if (isNaN(value) || value < 0) {
+    const contribution = parseFloat(editCurrentValue.replace(",", "."));
+    if (isNaN(contribution) || contribution <= 0) {
       toast.error("Valor inválido");
       return;
     }
-    if (value > editGoal.target) {
-      toast.error("Valor não pode ser maior que o objetivo");
-      return;
-    }
-    updateGoal.mutate(
-      { id: editGoal.id, current: value },
-      {
-        onSuccess: () => {
-          if (value >= editGoal.target) {
-            toast.success(`🎉 Meta "${editGoal.name}" concluída!`);
-          } else {
-            toast.success("Progresso atualizado!");
-          }
-          setEditGoal(null);
-          setEditCurrentValue("");
-        },
-        onError: () => toast.error("Erro ao atualizar progresso"),
+
+    const newCurrent = editGoal.current + contribution;
+    const categoryName = editGoal.category || "Metas";
+
+    setIsAddingContribution(true);
+    try {
+      let categoryId = categories.find(
+        (c) => c.name.toLowerCase() === categoryName.toLowerCase()
+      )?.id;
+
+      if (!categoryId) {
+        const created = await api.post<{ data: ApiCategory }>(apiEndpoints.categories.create, {
+          name: categoryName,
+        });
+        categoryId = created.data.id;
+        queryClient.invalidateQueries({ queryKey: ["categories"] });
       }
-    );
+
+      await updateGoal.mutateAsync({ id: editGoal.id, current: newCurrent });
+      await createTransaction.mutateAsync({
+        categoryId,
+        type: "EXPENSE",
+        amount: contribution,
+        description: `Aporte meta: ${editGoal.name}`,
+        occurredAt: new Date().toISOString(),
+      });
+
+      if (newCurrent >= editGoal.target) {
+        toast.success(`🎉 Meta "${editGoal.name}" concluída!`);
+      } else {
+        toast.success("Valor adicionado à meta e lançado como despesa!");
+      }
+      setEditGoal(null);
+      setEditCurrentValue("");
+    } catch {
+      toast.error("Erro ao adicionar valor à meta");
+    } finally {
+      setIsAddingContribution(false);
+    }
   };
 
   if (isLoading) {
@@ -263,8 +292,8 @@ const GoalsPage = memo(() => {
                         aria-label={`Atualizar progresso de ${goal.name}`}
                         className="h-7 w-7 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary hover:bg-primary/10"
                         onClick={() => {
-                          setEditGoal({ id: String(goal.id), name: goal.name, current: goal.current, target: goal.target });
-                          setEditCurrentValue(String(goal.current));
+                          setEditGoal({ id: String(goal.id), name: goal.name, current: goal.current, target: goal.target, category: goal.category });
+                          setEditCurrentValue("");
                         }}
                       >
                         <Pencil className="w-3.5 h-3.5" />
@@ -320,26 +349,28 @@ const GoalsPage = memo(() => {
       <Dialog open={!!editGoal} onOpenChange={(open) => { if (!open) { setEditGoal(null); setEditCurrentValue(""); } }}>
         <DialogContent className="w-[calc(100vw-2rem)] max-w-sm">
           <DialogHeader>
-            <DialogTitle>Atualizar Progresso</DialogTitle>
+            <DialogTitle>Adicionar valor à meta</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">
               Meta: <span className="font-medium text-foreground">{editGoal?.name}</span>
             </p>
             <div className="space-y-2">
-              <Label>Valor já economizado (R$)</Label>
+              <Label>Valor a adicionar (R$)</Label>
               <Input
                 type="number"
                 placeholder="0,00"
                 value={editCurrentValue}
                 onChange={(e) => setEditCurrentValue(e.target.value)}
                 min="0"
-                max={editGoal?.target}
                 step="0.01"
                 autoFocus
               />
               <p className="text-xs text-muted-foreground">
-                Objetivo: {fmtBRL(editGoal?.target ?? 0)}
+                Já economizado: {fmtBRL(editGoal?.current ?? 0)} · Faltam: {fmtBRL(Math.max(0, (editGoal?.target ?? 0) - (editGoal?.current ?? 0)))}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Esse valor será lançado como despesa nas Transações, Relatório e Dashboard.
               </p>
             </div>
           </div>
@@ -347,8 +378,8 @@ const GoalsPage = memo(() => {
             <Button variant="outline" onClick={() => { setEditGoal(null); setEditCurrentValue(""); }}>
               Cancelar
             </Button>
-            <Button onClick={handleUpdateProgress} disabled={updateGoal.isPending}>
-              {updateGoal.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
+            <Button onClick={handleAddContribution} disabled={isAddingContribution}>
+              {isAddingContribution ? <Loader2 className="w-4 h-4 animate-spin" /> : "Adicionar"}
             </Button>
           </DialogFooter>
         </DialogContent>

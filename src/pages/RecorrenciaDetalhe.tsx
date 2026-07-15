@@ -290,7 +290,7 @@ function PaymentCalendar({
       {hasPendingInMonth && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-600 font-medium">
           <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-          Este mês possui pagamento{paymentDateSet.size > 1 ? "s" : ""} pendente{paymentDateSet.size > 1 ? "s" : ""}
+          Este mês possui {isIncome ? "recebimento" : "pagamento"}{paymentDateSet.size > 1 ? "s" : ""} pendente{paymentDateSet.size > 1 ? "s" : ""}
         </div>
       )}
 
@@ -346,11 +346,11 @@ function PaymentCalendar({
       <div className="flex items-center gap-4 pt-1 justify-center">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className={`w-2 h-2 rounded-full ${isIncome ? "bg-emerald-500" : "bg-red-500"}`} />
-          Pagamento
+          {isIncome ? "Recebimento" : "Pagamento"}
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className="w-2 h-2 rounded-full bg-muted-foreground" />
-          Pago
+          {isIncome ? "Recebido" : "Pago"}
         </div>
       </div>
     </div>
@@ -408,11 +408,11 @@ function PaymentList({
                   <td className="px-3 py-2 text-center">
                     {isPaid ? (
                       <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-600 border-emerald-200">
-                        ✓ Pago
+                        ✓ {isIncome ? "Recebido" : "Pago"}
                       </Badge>
                     ) : isPast ? (
                       <Badge variant="outline" className="text-xs bg-red-50 text-red-500 border-red-200">
-                        Vencido
+                        {isIncome ? "Atrasado" : "Vencido"}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="text-xs text-muted-foreground">
@@ -600,10 +600,10 @@ const RecorrenciaDetalhePage = memo(() => {
         </div>
       </div>
 
-      {/* ── Seção 1: Informações (+ Calendário, só despesa) ── */}
-      <div className={`grid gap-6 mb-6 ${isIncome ? "justify-items-center" : "lg:grid-cols-2"}`}>
+      {/* ── Seção 1: Informações + Calendário ── */}
+      <div className="grid gap-6 mb-6 lg:grid-cols-2">
         {/* Card Informações */}
-        <Card className={`border-border shadow-sm w-full ${isIncome ? "max-w-2xl" : ""}`}>
+        <Card className="border-border shadow-sm">
           <CardHeader className="pb-4">
             <CardTitle className="text-base font-semibold">Informações</CardTitle>
           </CardHeader>
@@ -695,114 +695,94 @@ const RecorrenciaDetalhePage = memo(() => {
                 </Badge>
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            {/* Elemento secundário — só receita, evita card vazio em telas largas */}
-            {isIncome && (
-              <div className="flex items-center gap-3 pt-1 px-4 py-3 rounded-xl bg-muted/40 border border-border/60">
-                <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-                  {rec.endDate ? (
-                    <CalendarOff className="w-4 h-4 text-emerald-600" />
-                  ) : (
-                    <InfinityIcon className="w-4 h-4 text-emerald-600" />
-                  )}
+        {/* Card Calendário */}
+        <Card className="border-border shadow-sm">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+              <CardTitle className="text-base font-semibold">
+                Calendário de {isIncome ? "Recebimentos" : "Pagamentos"}
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <PaymentCalendar
+              calMonth={calMonth}
+              setCalMonth={setCalMonth}
+              paymentDateSet={paymentDateSet}
+              paidDates={paidDates}
+              isIncome={isIncome}
+              hasPendingInMonth={hasPendingInMonth}
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Seção 2: Listagem + Projeção ── */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Card Listagem */}
+        <Card className="border-border shadow-sm">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                <CheckSquare className="w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+              <CardTitle className="text-base font-semibold">
+                Listagem de {isIncome ? "Recebimentos" : "Pagamentos"}
+                {paidDates.size > 0 && (
+                  <span className="ml-2 text-xs font-normal text-emerald-600">
+                    {paidDates.size} {isIncome ? "recebido" : "pago"}{paidDates.size > 1 ? "s" : ""}
+                  </span>
+                )}
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <PaymentList
+              allDates={allDates}
+              amount={rec.amount}
+              isIncome={isIncome}
+              paidDates={paidDates}
+              isFinite={!!rec.endDate}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Card Projeção */}
+        <Card className="border-border shadow-sm">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                <InfinityIcon className="w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+              <CardTitle className="text-base font-semibold">Projeção</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {rec.endDate ? (
+              <ProjectionTable rec={rec} amount={rec.amount} />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ring-1 ${bgClass} ${isIncome ? "ring-emerald-500/20" : "ring-red-500/20"}`}>
+                  <InfinityIcon className={`w-7 h-7 ${colorClass}`} />
                 </div>
-                <p className="text-xs text-muted-foreground leading-snug">
-                  {rec.endDate
-                    ? `Receita programada até ${endDisplay}, gerada automaticamente a cada ciclo ${FREQUENCY_LABELS[rec.frequency].toLowerCase()}.`
-                    : `Receita contínua, sem data de término — gerada automaticamente a cada ciclo ${FREQUENCY_LABELS[rec.frequency].toLowerCase()}.`}
-                </p>
+                <div>
+                  <p className="font-semibold text-sm">Recorrência contínua</p>
+                  <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+                    Esta recorrência não possui data de término definida e continuará sendo
+                    gerada automaticamente.
+                  </p>
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
-
-        {/* Card Calendário de Pagamentos — só despesa */}
-        {!isIncome && (
-          <Card className="border-border shadow-sm">
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                  <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-                </div>
-                <CardTitle className="text-base font-semibold">Calendário de Pagamentos</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <PaymentCalendar
-                calMonth={calMonth}
-                setCalMonth={setCalMonth}
-                paymentDateSet={paymentDateSet}
-                paidDates={paidDates}
-                isIncome={isIncome}
-                hasPendingInMonth={hasPendingInMonth}
-              />
-            </CardContent>
-          </Card>
-        )}
       </div>
-
-      {/* ── Seção 2: Listagem + Projeção — só despesa ── */}
-      {!isIncome && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Card Listagem de Pagamentos */}
-          <Card className="border-border shadow-sm">
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                  <CheckSquare className="w-3.5 h-3.5 text-muted-foreground" />
-                </div>
-                <CardTitle className="text-base font-semibold">
-                  Listagem de Pagamentos
-                  {paidDates.size > 0 && (
-                    <span className="ml-2 text-xs font-normal text-emerald-600">
-                      {paidDates.size} pago{paidDates.size > 1 ? "s" : ""}
-                    </span>
-                  )}
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <PaymentList
-                allDates={allDates}
-                amount={rec.amount}
-                isIncome={isIncome}
-                paidDates={paidDates}
-                isFinite={!!rec.endDate}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Card Projeção */}
-          <Card className="border-border shadow-sm">
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                  <InfinityIcon className="w-3.5 h-3.5 text-muted-foreground" />
-                </div>
-                <CardTitle className="text-base font-semibold">Projeção</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {rec.endDate ? (
-                <ProjectionTable rec={rec} amount={rec.amount} />
-              ) : (
-                <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ring-1 ${bgClass} ${isIncome ? "ring-emerald-500/20" : "ring-red-500/20"}`}>
-                    <InfinityIcon className={`w-7 h-7 ${colorClass}`} />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm">Recorrência contínua</p>
-                    <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-                      Esta recorrência não possui data de término definida e continuará sendo
-                      gerada automaticamente.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   );
 });
