@@ -88,20 +88,40 @@ async function fetchDashboard(): Promise<DashboardData> {
     .filter((r) => r.type === "EXPENSE")
     .reduce((acc, r) => acc + monthlyEquivalent(r.amount, r.frequency), 0);
 
-  const balance = {
-    income: balanceRes.data.income + recurringIncome,
-    expense: balanceRes.data.expense + recurringExpense,
-    balance: balanceRes.data.balance + recurringIncome - recurringExpense,
-  };
+  const txExpenseTotal = transactions
+    .filter((t) => t.type === "EXPENSE")
+    .reduce((acc, t) => acc + t.amount, 0);
+  const txIncomeTotal = transactions
+    .filter((t) => t.type === "INCOME")
+    .reduce((acc, t) => acc + t.amount, 0);
 
-  if (catSummary.length === 0 && unpaidRecurrences.length > 0) {
-    catSummary = unpaidRecurrences
-      .filter((r) => r.type === "EXPENSE")
-      .map((r) => ({
-        categoryId: r.categoryId,
-        income: 0,
-        expense: monthlyEquivalent(r.amount, r.frequency),
-      }));
+  const balance = {
+    income: Math.max(balanceRes.data.income, txIncomeTotal) + recurringIncome,
+    expense: Math.max(balanceRes.data.expense, txExpenseTotal) + recurringExpense,
+    balance: 0,
+  };
+  balance.balance = balance.income - balance.expense;
+
+  // combina despesas reais (transações do mês) com recorrências ainda não lançadas
+  const categoryExpenseMap = new Map<string, number>();
+  transactions
+    .filter((t) => t.type === "EXPENSE")
+    .forEach((t) => {
+      categoryExpenseMap.set(t.categoryId, (categoryExpenseMap.get(t.categoryId) ?? 0) + t.amount);
+    });
+  unpaidRecurrences
+    .filter((r) => r.type === "EXPENSE")
+    .forEach((r) => {
+      const value = monthlyEquivalent(r.amount, r.frequency);
+      categoryExpenseMap.set(r.categoryId, (categoryExpenseMap.get(r.categoryId) ?? 0) + value);
+    });
+
+  if (categoryExpenseMap.size > 0) {
+    catSummary = Array.from(categoryExpenseMap.entries()).map(([categoryId, expense]) => ({
+      categoryId,
+      income: 0,
+      expense,
+    }));
   }
 
   const catMap = new Map(categories.map((c) => [c.id, c.name]));

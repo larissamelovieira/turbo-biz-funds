@@ -34,6 +34,27 @@ const GOAL_COLORS = [
 
 const GOAL_ICONS = ["🎯", "🏠", "✈️", "🚗", "💰", "📱", "🎓", "💊"];
 
+async function resolveCategoryId(
+  name: string,
+  knownCategories: ApiCategory[]
+): Promise<string> {
+  const existing = knownCategories.find((c) => c.name.toLowerCase() === name.toLowerCase());
+  if (existing) return existing.id;
+
+  try {
+    const created = await api.post<{ data: ApiCategory }>(apiEndpoints.categories.create, { name });
+    return created.data.id;
+  } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((error as any)?.status === 409) {
+      const list = await api.get<{ data: ApiCategory[] }>(apiEndpoints.categories.list);
+      const found = list.data.find((c) => c.name.toLowerCase() === name.toLowerCase());
+      if (found) return found.id;
+    }
+    throw error;
+  }
+}
+
 const GoalsPageSkeleton = () => (
   <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6 animate-pulse">
     <PageHeaderSkeleton />
@@ -105,9 +126,27 @@ const GoalsPage = memo(() => {
         category: form.category.trim() || "Geral",
       },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
           toast.success("Meta criada!");
           setIsDialogOpen(false);
+
+          if (currentValue > 0) {
+            const categoryName = form.category.trim() || "Geral";
+            try {
+              const categoryId = await resolveCategoryId(categoryName, categories);
+              queryClient.invalidateQueries({ queryKey: ["categories"] });
+              await createTransaction.mutateAsync({
+                categoryId,
+                type: "EXPENSE",
+                amount: currentValue,
+                description: `Aporte meta: ${form.name.trim()}`,
+                occurredAt: new Date().toISOString(),
+              });
+            } catch {
+              toast.error("Meta criada, mas falhou ao lançar valor inicial como despesa");
+            }
+          }
+
           setForm({ name: "", target: "", current: "0", deadline: "", category: "", color: GOAL_COLORS[0], icon: GOAL_ICONS[0] });
         },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -140,28 +179,20 @@ const GoalsPage = memo(() => {
       return;
     }
 
-    const newCurrent = editGoal.current + contribution;
+    const clampedContribution = Math.min(contribution, Math.max(0, editGoal.target - editGoal.current));
+    const newCurrent = editGoal.current + clampedContribution;
     const categoryName = editGoal.category || "Metas";
 
     setIsAddingContribution(true);
     try {
-      let categoryId = categories.find(
-        (c) => c.name.toLowerCase() === categoryName.toLowerCase()
-      )?.id;
-
-      if (!categoryId) {
-        const created = await api.post<{ data: ApiCategory }>(apiEndpoints.categories.create, {
-          name: categoryName,
-        });
-        categoryId = created.data.id;
-        queryClient.invalidateQueries({ queryKey: ["categories"] });
-      }
+      const categoryId = await resolveCategoryId(categoryName, categories);
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
 
       await updateGoal.mutateAsync({ id: editGoal.id, current: newCurrent });
       await createTransaction.mutateAsync({
         categoryId,
         type: "EXPENSE",
-        amount: contribution,
+        amount: clampedContribution,
         description: `Aporte meta: ${editGoal.name}`,
         occurredAt: new Date().toISOString(),
       });
@@ -173,8 +204,9 @@ const GoalsPage = memo(() => {
       }
       setEditGoal(null);
       setEditCurrentValue("");
-    } catch {
-      toast.error("Erro ao adicionar valor à meta");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      toast.error(error?.message ? `Erro ao lançar despesa: ${error.message}` : "Erro ao adicionar valor à meta");
     } finally {
       setIsAddingContribution(false);
     }
