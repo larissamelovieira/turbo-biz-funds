@@ -389,9 +389,9 @@ const CardsPage = memo(() => {
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-border">
-                  <Badge variant="outline">Vencimento: {card.dueDate ? card.dueDate.split("-").reverse().join("/") : "—"}</Badge>
-                  <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-border">
+                  <Badge variant="outline" className="shrink-0">Vencimento: {card.dueDate ? card.dueDate.split("-").reverse().join("/") : "—"}</Badge>
+                  <div className="flex flex-wrap items-center gap-1">
                     <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-muted/50" onClick={() => openHistory(card)}>
                       <History className="w-4 h-4 mr-1" />
                       Histórico

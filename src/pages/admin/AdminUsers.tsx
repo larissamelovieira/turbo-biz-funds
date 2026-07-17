@@ -770,6 +770,7 @@ export default function AdminUsers() {
               </Card>
             ) : (
               <Card className="border-0 shadow-sm">
+                <div className="hidden md:block">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-muted/50 hover:bg-transparent">
@@ -877,6 +878,97 @@ export default function AdminUsers() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
+
+                {/* Mobile card list */}
+                <div className="md:hidden divide-y divide-border">
+                  {paginatedUsers.map((user) => (
+                    <div
+                      key={user.id}
+                      className="p-4 flex flex-col gap-3 cursor-pointer hover:bg-muted/30"
+                      onClick={() => openDetail(user)}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar className="h-9 w-9 shrink-0">
+                            <AvatarFallback className="bg-muted text-muted-foreground text-sm font-medium">
+                              {getInitials(user.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">{user.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                          </div>
+                        </div>
+                        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => openDetail(user)}>
+                                <UserCheck className="h-4 w-4 mr-2" />
+                                Ver detalhes
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openAction(user, "plan")}>
+                                <Crown className="h-4 w-4 mr-2" />
+                                Alterar plano
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => window.open(`mailto:${user.email}`)}>
+                                <Mail className="h-4 w-4 mr-2" />
+                                Enviar email
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openAction(user, "role")}>
+                                <Shield className="h-4 w-4 mr-2" />
+                                {user.role === "admin" ? "Remover admin" : "Promover a admin"}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-amber-600"
+                                onClick={() => openAction(user, "status")}
+                              >
+                                {user.status === "Bloqueado" || user.status === "suspended" ? (
+                                  <><CheckCircle className="h-4 w-4 mr-2" />Desbloquear</>
+                                ) : (
+                                  <><Ban className="h-4 w-4 mr-2" />Bloquear</>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => openAction(user, "delete")}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Excluir usuário
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <PlanBadge plan={user.plan} />
+                        <StatusBadge status={user.status} />
+                        <Badge
+                          variant="outline"
+                          className={
+                            user.role === "admin"
+                              ? "bg-orange-500/10 text-orange-600 border-orange-200"
+                              : "bg-muted text-muted-foreground"
+                          }
+                        >
+                          {user.role === "admin" ? "Admin" : "Usuário"}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <span>Criado em {formatDate(user.createdAt)}</span>
+                        <span>Último acesso: {user.lastLogin ? formatDate(user.lastLogin) : "—"}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
                 {/* Pagination */}
                 <div className="flex items-center justify-between px-4 py-3 border-t border-muted/50">

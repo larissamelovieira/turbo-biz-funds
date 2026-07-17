@@ -42,7 +42,7 @@ const DashboardSkeleton = () => (
       <Skeleton className="h-7 w-44" />
       <Skeleton className="h-4 w-64" />
     </div>
-    <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
+    <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
       {[1, 2, 3].map((i) => (
         <Skeleton key={i} className="h-[110px] rounded-2xl" />
       ))}
@@ -97,8 +97,8 @@ const UserDashboard = memo(() => {
         </p>
       </div>
 
-      {/* Stat cards — 2 cols mobile, 3 cols sm+ */}
-      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
+      {/* Stat cards — 1 col mobile, 3 cols sm+ */}
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
         {dashboardData.stats.map((stat) => (
           <StatCard key={stat.id} stat={stat} />
         ))}

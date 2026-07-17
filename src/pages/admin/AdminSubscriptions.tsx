@@ -257,6 +257,7 @@ export default function AdminSubscriptions() {
         </Card>
 
         <Card className="border-0 shadow-sm">
+          <div className="hidden md:block">
           <Table>
             <TableHeader>
               <TableRow className="border-muted/50 hover:bg-transparent">
@@ -380,6 +381,108 @@ export default function AdminSubscriptions() {
               })}
             </TableBody>
           </Table>
+          </div>
+
+          {/* Mobile card list */}
+          <div className="md:hidden divide-y divide-border">
+            {filteredSubscriptions.map((sub) => {
+              const status = getStatusConfig(sub.status);
+              const StatusIcon = status.icon;
+              return (
+                <div key={sub.id} className="p-4 flex flex-col gap-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Avatar className="h-9 w-9 shrink-0">
+                        <AvatarFallback className="bg-muted text-muted-foreground text-sm font-medium">
+                          {sub.user?.avatar ?? "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{sub.user?.name ?? "N/A"}</p>
+                        <p className="text-xs text-muted-foreground truncate">{sub.user?.email ?? "N/A"}</p>
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem>
+                          <Eye className="h-4 w-4 mr-2" />
+                          Visualizar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Alterar plano
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Renovar manualmente
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {sub.status === "Ativo" && (
+                          <DropdownMenuItem className="text-amber-500">
+                            <Pause className="h-4 w-4 mr-2" />
+                            Pausar
+                          </DropdownMenuItem>
+                        )}
+                        {sub.status === "Inativo" && (
+                          <DropdownMenuItem>
+                            <Play className="h-4 w-4 mr-2" />
+                            Reativar
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive">
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Cancelar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                      {sub.plan}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className={`bg-${status.bg} text-${status.color} border-${status.border}`}
+                    >
+                      <StatusIcon className="h-3 w-3 mr-1.5" />
+                      {status.label}
+                    </Badge>
+                    {sub.paymentMethod && (
+                      sub.paymentMethod.toLowerCase().includes("pix") ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-500/10 text-green-600 text-xs font-semibold border border-green-200">
+                          <CreditCard className="h-3 w-3" />
+                          PIX
+                        </span>
+                      ) : sub.paymentMethod.toLowerCase().includes("card") || sub.paymentMethod.toLowerCase().includes("credit") || sub.paymentMethod.toLowerCase().includes("cart") ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 text-xs font-semibold border border-blue-200">
+                          <CreditCard className="h-3 w-3" />
+                          Cartão
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{sub.paymentMethodLabel}</span>
+                      )
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground text-sm">
+                      {sub.amount > 0 ? `R$ ${sub.amount.toFixed(2)}/mês` : "Gratuito"}
+                    </span>
+                    <span>Próxima cobrança: {formatDateToBR(sub.nextBilling)}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
           <div className="flex items-center justify-between p-4 border-t border-muted/50">
             <p className="text-sm text-muted-foreground">

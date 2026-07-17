@@ -747,6 +747,7 @@ export default function AdminPlans() {
                 <CardDescription>Todas as assinaturas da plataforma</CardDescription>
               </CardHeader>
               <CardContent>
+                <div className="hidden md:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -792,6 +793,40 @@ export default function AdminPlans() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
+
+                {/* Mobile card list */}
+                <div className="md:hidden divide-y divide-border">
+                  {subscriptions.map((sub) => (
+                    <div key={sub.id} className="py-4 flex flex-col gap-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-medium text-sm min-w-0 truncate">{sub.client}</p>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>Ver detalhes</DropdownMenuItem>
+                            <DropdownMenuItem>Alterar plano</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive">Cancelar</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline">{sub.plan}</Badge>
+                        <Badge className={statusColors[sub.status]}>{sub.status}</Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Início {sub.startDate} · Próxima {sub.nextBilling}</span>
+                        <span className="font-medium text-foreground text-sm">
+                          {sub.amount > 0 ? `R$ ${sub.amount}` : '-'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

@@ -374,9 +374,9 @@ const TransactionsPage = memo(() => {
                 return (
                   <div
                     key={transaction.id}
-                    className="flex items-center justify-between p-3 sm:p-4 rounded-xl border border-border bg-card hover:bg-accent/40 transition-all duration-150 group gap-2"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-2 p-3 sm:p-4 rounded-xl border border-border bg-card hover:bg-accent/40 transition-all duration-150 group"
                   >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex items-center gap-3 min-w-0 sm:flex-1">
                       <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 ${
                         isIncome ? "bg-emerald-500/10" : "bg-red-500/10"
                       }`}>
@@ -407,8 +407,8 @@ const TransactionsPage = memo(() => {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <div className="text-right">
+                    <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t border-border/60 sm:border-t-0">
+                      <div className="text-left sm:text-right">
                         <span className={`font-bold text-sm sm:text-base whitespace-nowrap ${isIncome ? "text-emerald-500" : "text-foreground"}`}>
                           {isIncome ? "+" : "−"}{fmtBRL(transaction.amount)}
                         </span>

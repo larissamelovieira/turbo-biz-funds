@@ -356,37 +356,39 @@ const RecorrenciasPage = memo(() => {
                 className="border-border shadow-sm transition-all duration-200 hover:shadow-md group cursor-pointer"
                 onClick={() => navigate(`/dashboard/recorrencias/${rec.id}`)}
               >
-                <CardContent className="p-4 flex items-center gap-4">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                      isIncome ? "bg-emerald-500/10" : "bg-red-500/10"
-                    }`}
-                  >
-                    {isIncome ? (
-                      <TrendingUp className="w-5 h-5 text-emerald-500" />
-                    ) : (
-                      <TrendingDown className="w-5 h-5 text-red-500" />
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground truncate">
-                      {rec.description || category?.name || "Sem descrição"}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-xs">
-                        {FREQUENCY_LABELS[rec.frequency]}
-                      </Badge>
-                      {category && (
-                        <span className="text-xs text-muted-foreground">{category.name}</span>
+                <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                  <div className="flex items-center gap-3 sm:gap-4 min-w-0 sm:flex-1">
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                        isIncome ? "bg-emerald-500/10" : "bg-red-500/10"
+                      }`}
+                    >
+                      {isIncome ? (
+                        <TrendingUp className="w-5 h-5 text-emerald-500" />
+                      ) : (
+                        <TrendingDown className="w-5 h-5 text-red-500" />
                       )}
-                      <span className="text-xs text-muted-foreground">
-                        desde {new Date(rec.startDate).toLocaleDateString("pt-BR")}
-                      </span>
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">
+                        {rec.description || category?.name || "Sem descrição"}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
+                        <Badge variant="outline" className="text-xs shrink-0">
+                          {FREQUENCY_LABELS[rec.frequency]}
+                        </Badge>
+                        {category && (
+                          <span className="text-xs text-muted-foreground truncate max-w-[45%]">{category.name}</span>
+                        )}
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          desde {new Date(rec.startDate).toLocaleDateString("pt-BR")}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="text-right shrink-0">
+                  <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t border-border/60 sm:border-t-0">
                     <p
                       className={`font-semibold text-base ${
                         isIncome ? "text-emerald-500" : "text-red-500"
@@ -394,27 +396,29 @@ const RecorrenciasPage = memo(() => {
                     >
                       {isIncome ? "+" : "-"}R$ {fmt(rec.amount)}
                     </p>
-                  </div>
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Editar recorrência"
-                    className="h-8 w-8 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
-                    onClick={(e) => { e.stopPropagation(); openEdit(rec); }}
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Excluir recorrência"
-                    className="h-8 w-8 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
-                    onClick={(e) => { e.stopPropagation(); handleDelete(rec.id); }}
-                    disabled={deleteRecurrence.isPending}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Editar recorrência"
+                        className="h-8 w-8 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
+                        onClick={(e) => { e.stopPropagation(); openEdit(rec); }}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Excluir recorrência"
+                        className="h-8 w-8 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                        onClick={(e) => { e.stopPropagation(); handleDelete(rec.id); }}
+                        disabled={deleteRecurrence.isPending}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             );

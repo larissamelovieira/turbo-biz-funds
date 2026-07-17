@@ -492,6 +492,7 @@ function AdminDashboard() {
               </Button>
             </div>
             <div className="bg-white">
+              <div className="hidden md:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -546,7 +547,48 @@ function AdminDashboard() {
                   ))}
                 </TableBody>
               </Table>
-              
+              </div>
+
+              {/* Mobile card list */}
+              <div className="md:hidden divide-y divide-border">
+                {paginatedClients.map((client) => (
+                  <div key={client.email} className="p-4 flex flex-col gap-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarFallback className="bg-[#1a3799]/10 text-[#1a3799] text-xs font-bold">
+                          {client.name.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-sm text-gray-900 truncate">{client.name}</p>
+                        <p className="text-xs text-gray-400 truncate">{client.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={client.plan === "Business" ? "default" : client.plan === "Pro" ? "secondary" : "outline"} className="text-xs">
+                        {client.plan}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs",
+                          client.status === "Bloqueado" && "bg-red-50 text-red-700 border-red-200 font-semibold",
+                          client.status === "Ativo" && "bg-green-50 text-green-700 border-green-200"
+                        )}
+                      >
+                        {client.status === "Bloqueado" && "⚠️ "}{client.status}
+                      </Badge>
+                      {client.role === "admin" && (
+                        <Badge variant="default" className="text-xs bg-amber-500 hover:bg-amber-600">
+                          👑 Admin
+                        </Badge>
+                      )}
+                      <span className="text-xs text-gray-400 ml-auto">{client.date}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               {/* Pagination Controls */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between px-4 py-3 border-t">

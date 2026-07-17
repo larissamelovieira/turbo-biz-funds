@@ -151,9 +151,9 @@ function MonthGroup({ monthIndex, transactions, catMap }: MonthGroupProps) {
             return (
               <div
                 key={transaction.id}
-                className="flex items-center justify-between px-4 py-3 bg-card hover:bg-accent/40 transition-all duration-150"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 px-4 py-3 bg-card hover:bg-accent/40 transition-all duration-150"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <div
                     className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                       isIncome ? "bg-emerald-500/10" : "bg-red-500/10"
@@ -165,24 +165,24 @@ function MonthGroup({ monthIndex, transactions, catMap }: MonthGroupProps) {
                       <ArrowDownRight className="w-4 h-4 text-red-500" />
                     )}
                   </div>
-                  <div>
-                    <p className="font-medium text-foreground text-sm leading-tight">
+                  <div className="min-w-0">
+                    <p className="font-medium text-foreground text-sm leading-tight truncate">
                       {transaction.description ?? "Sem descrição"}
                     </p>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <Badge
                         variant="outline"
-                        className="text-xs px-2 py-0 h-5 bg-background font-normal"
+                        className="text-xs px-2 py-0 h-5 bg-background font-normal shrink-0"
                       >
                         {catName}
                       </Badge>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
                         {formatDate(transaction.occurredAt)}
                       </span>
                     </div>
                   </div>
                 </div>
-                <div className="text-right shrink-0 ml-3">
+                <div className="text-left sm:text-right shrink-0 sm:ml-3 pl-12 sm:pl-0">
                   <span
                     className={`font-bold text-sm ${
                       isIncome ? "text-emerald-500" : "text-foreground"
@@ -210,8 +210,8 @@ function RecurrenceCard({ recurrence, catMap }: RecurrenceCardProps) {
   const catName = catMap.get(recurrence.categoryId) ?? "Sem categoria";
 
   return (
-    <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-card hover:bg-accent/40 transition-all duration-150">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-4 rounded-xl border border-border bg-card hover:bg-accent/40 transition-all duration-150">
+      <div className="flex items-center gap-3 min-w-0">
         <div
           className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
             isIncome ? "bg-emerald-500/10" : "bg-red-500/10"
@@ -221,26 +221,26 @@ function RecurrenceCard({ recurrence, catMap }: RecurrenceCardProps) {
             className={`w-4 h-4 ${isIncome ? "text-emerald-500" : "text-red-500"}`}
           />
         </div>
-        <div>
-          <p className="font-medium text-foreground text-sm leading-tight">
+        <div className="min-w-0">
+          <p className="font-medium text-foreground text-sm leading-tight truncate">
             {recurrence.description ?? "Sem descrição"}
           </p>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             <Badge
               variant="outline"
-              className="text-xs px-2 py-0 h-5 bg-background font-normal"
+              className="text-xs px-2 py-0 h-5 bg-background font-normal shrink-0"
             >
               {catName}
             </Badge>
             <Badge
               variant="outline"
-              className="text-xs px-2 py-0 h-5 bg-primary/5 border-primary/20 text-primary font-normal"
+              className="text-xs px-2 py-0 h-5 bg-primary/5 border-primary/20 text-primary font-normal shrink-0"
             >
               {FREQUENCY_LABELS[recurrence.frequency]}
             </Badge>
             <Badge
               variant="outline"
-              className={`text-xs px-2 py-0 h-5 font-normal ${
+              className={`text-xs px-2 py-0 h-5 font-normal shrink-0 ${
                 recurrence.active
                   ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-600"
                   : "bg-muted text-muted-foreground"
@@ -251,7 +251,7 @@ function RecurrenceCard({ recurrence, catMap }: RecurrenceCardProps) {
           </div>
         </div>
       </div>
-      <div className="text-right shrink-0 ml-3">
+      <div className="text-left sm:text-right shrink-0 sm:ml-3 pl-[52px] sm:pl-0">
         <span
           className={`font-bold text-base ${
             isIncome ? "text-emerald-500" : "text-foreground"
