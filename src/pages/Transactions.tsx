@@ -96,10 +96,7 @@ const TransactionsPage = memo(() => {
 
   const { recurrences } = useActiveRecurrences();
 
-  const now = new Date();
-  const transactions = (transactionsRes?.data ?? []).filter(
-    (t) => new Date(t.occurredAt).getTime() <= now.getTime()
-  );
+  const transactions = transactionsRes?.data ?? [];
   const categories = categoriesRes?.data ?? [];
   const catMap = new Map(categories.map((c) => [c.id, c.name]));
 

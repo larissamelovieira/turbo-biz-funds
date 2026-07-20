@@ -312,12 +312,18 @@ export default function RelatorioPage() {
   const [selectedYear, setSelectedYear] = useState<number>(CURRENT_YEAR);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(new Date().getMonth());
 
-  // Fetch transactions (30d window — filtered client-side by year)
+  // period=30d é uma janela relativa que só olha pra trás a partir de hoje,
+  // então nunca trazia lançamentos fora dos últimos 30 dias (incluindo
+  // futuros, tipo salário lançado via bot pra um mês adiante). Buscamos um
+  // range fixo e amplo via period=custom uma única vez — o filtro por
+  // ano/mês selecionado continua sendo feito no client, como antes.
+  const rangeStart = new Date(START_YEAR, 0, 1).toISOString();
+  const rangeEnd = new Date(CURRENT_YEAR + 3, 11, 31, 23, 59, 59, 999).toISOString();
   const { data: transactionsRes, isLoading: isLoadingTransactions } = useQuery({
-    queryKey: ["transactions", "relatorio", "30d"],
+    queryKey: ["transactions", "relatorio"],
     queryFn: () =>
       api.get<{ data: ApiTransaction[] }>(
-        `${apiEndpoints.transactions.list}?period=30d`
+        `${apiEndpoints.transactions.list}?period=custom&from=${rangeStart}&to=${rangeEnd}`
       ),
     staleTime: 2 * 60 * 1000,
   });
@@ -345,7 +351,9 @@ export default function RelatorioPage() {
   );
 
   // Anos disponíveis — inclui anos futuros alcançados por parcelas de
-  // recorrências (ex: compra parcelada em 24x pode terminar 2 anos à frente).
+  // recorrências (ex: compra parcelada em 24x pode terminar 2 anos à frente)
+  // ou por transações reais fora do ano atual (ex: lançamento manual/bot
+  // com data futura).
   const availableYears = useMemo(() => {
     let maxYear = CURRENT_YEAR;
     for (const r of recurrences) {

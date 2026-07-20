@@ -46,14 +46,18 @@ async function fetchDashboard(): Promise<DashboardData> {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
-  // backend só reconhece period fixo (weekly/15d/30d) — valores arbitrários voltam vazios
-  const period = "30d";
+  // period=30d é uma janela relativa que só olha pra trás a partir de hoje,
+  // então lançamentos no restante do mês atual (ex: data futura dentro do
+  // próprio mês) ficavam de fora. period=custom com from/to do mês fecha isso.
+  const monthStart = new Date(currentYear, currentMonth, 1).toISOString();
+  const monthEnd = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999).toISOString();
+  const periodQuery = `period=custom&from=${monthStart}&to=${monthEnd}`;
 
   const [balanceRes, transactionsRes, categoriesRes, catSummaryRes, goalsRes, recurrencesRes] = await Promise.all([
-    api.get<{ data: BalanceData }>(`${apiEndpoints.summary.balance}?period=${period}`).catch(() => ({ data: { income: 0, expense: 0, balance: 0 } })),
-    api.get<{ data: ApiTransaction[] }>(`${apiEndpoints.transactions.list}?period=${period}`).catch(() => ({ data: [] as ApiTransaction[] })),
+    api.get<{ data: BalanceData }>(`${apiEndpoints.summary.balance}?${periodQuery}`).catch(() => ({ data: { income: 0, expense: 0, balance: 0 } })),
+    api.get<{ data: ApiTransaction[] }>(`${apiEndpoints.transactions.list}?${periodQuery}`).catch(() => ({ data: [] as ApiTransaction[] })),
     api.get<{ data: CategoryItem[] }>(apiEndpoints.categories.list).catch(() => ({ data: [] as CategoryItem[] })),
-    api.get<{ data: CategorySummaryItem[] }>(`${apiEndpoints.summary.categories}?period=${period}`).catch(() => ({ data: [] as CategorySummaryItem[] })),
+    api.get<{ data: CategorySummaryItem[] }>(`${apiEndpoints.summary.categories}?${periodQuery}`).catch(() => ({ data: [] as CategorySummaryItem[] })),
     api.get<{ data: ApiGoal[] }>(apiEndpoints.goals.list).catch(() => ({ data: [] as ApiGoal[] })),
     api.get<{ data: Recurrence[] }>(apiEndpoints.recurrences.active).catch(() => ({ data: [] as Recurrence[] })),
   ]);
