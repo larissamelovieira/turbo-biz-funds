@@ -94,6 +94,31 @@ function formatDate(iso: string): string {
   });
 }
 
+/**
+ * Recorrência sem endDate é contínua (sem fim real) — não dá pra listar
+ * "todos os anos". Projetamos o mesmo horizonte de 24 ocorrências que a
+ * tela de detalhe da recorrência usa (RecorrenciaDetalhe.tsx, buildOccurrences),
+ * pra decidir até que ano futuro mostrar o seletor automaticamente.
+ */
+function projectedMaxYear(startDate: string, frequency: Recurrence["frequency"], occurrences = 24): number {
+  const d = new Date(startDate);
+  switch (frequency) {
+    case "daily":
+      d.setDate(d.getDate() + occurrences);
+      break;
+    case "weekly":
+      d.setDate(d.getDate() + occurrences * 7);
+      break;
+    case "monthly":
+      d.setMonth(d.getMonth() + occurrences);
+      break;
+    case "yearly":
+      d.setFullYear(d.getFullYear() + occurrences);
+      break;
+  }
+  return d.getFullYear();
+}
+
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
 interface MonthGroupProps {
@@ -383,10 +408,11 @@ export default function RelatorioPage() {
   const availableYears = useMemo(() => {
     let maxYear = CURRENT_YEAR;
     for (const r of recurrences) {
-      if (r.endDate) {
-        const y = new Date(r.endDate).getFullYear();
-        if (y > maxYear) maxYear = y;
-      }
+      if (!r.active) continue;
+      const y = r.endDate
+        ? new Date(r.endDate).getFullYear()
+        : projectedMaxYear(r.startDate, r.frequency);
+      if (y > maxYear) maxYear = y;
     }
     for (const t of allTransactions) {
       const y = new Date(t.occurredAt).getFullYear();
@@ -657,15 +683,15 @@ export default function RelatorioPage() {
       </div>
 
       {/* Year selector */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-muted-foreground">Ano:</span>
-        <div className="flex gap-1.5 bg-muted/50 rounded-lg p-1 border border-border">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="text-sm font-medium text-muted-foreground shrink-0">Ano:</span>
+        <div className="flex gap-1.5 bg-muted/50 rounded-lg p-1 border border-border overflow-x-auto max-w-full">
           {availableYears.map((year) => (
             <button
               key={year}
               type="button"
               onClick={() => { setSelectedYear(year); setSelectedMonth(null); }}
-              className={`px-3 py-1 text-sm rounded-md transition-colors font-medium ${
+              className={`px-3 py-1 text-sm rounded-md transition-colors font-medium shrink-0 ${
                 selectedYear === year
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
