@@ -13,8 +13,10 @@ import {
   ChevronUp,
   Download,
   FileSpreadsheet,
+  Trash2,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { api, apiEndpoints } from "@/lib/api/client";
 import { useActiveRecurrences } from "@/features/recurrences/hooks/use-recurrences";
 import { fmtBRL, fmtNumber } from "@/lib/format";
@@ -98,9 +100,11 @@ interface MonthGroupProps {
   monthIndex: number;
   transactions: ApiTransaction[];
   catMap: Map<string, string>;
+  onDelete: (id: string) => void;
+  deletingId: string | null;
 }
 
-function MonthGroup({ monthIndex, transactions, catMap }: MonthGroupProps) {
+function MonthGroup({ monthIndex, transactions, catMap, onDelete, deletingId }: MonthGroupProps) {
   const [expanded, setExpanded] = useState(true);
 
   const income = transactions
@@ -151,7 +155,7 @@ function MonthGroup({ monthIndex, transactions, catMap }: MonthGroupProps) {
             return (
               <div
                 key={transaction.id}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 px-4 py-3 bg-card hover:bg-accent/40 transition-all duration-150"
+                className="group flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 px-4 py-3 bg-card hover:bg-accent/40 transition-all duration-150"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div
@@ -182,7 +186,7 @@ function MonthGroup({ monthIndex, transactions, catMap }: MonthGroupProps) {
                     </div>
                   </div>
                 </div>
-                <div className="text-left sm:text-right shrink-0 sm:ml-3 pl-12 sm:pl-0">
+                <div className="flex items-center gap-2 shrink-0 sm:ml-3 pl-12 sm:pl-0">
                   <span
                     className={`font-bold text-sm ${
                       isIncome ? "text-emerald-500" : "text-foreground"
@@ -190,6 +194,16 @@ function MonthGroup({ monthIndex, transactions, catMap }: MonthGroupProps) {
                   >
                     {isIncome ? "+" : "−"}R$ {fmt(transaction.amount)}
                   </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Remover transação"
+                    className="opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                    onClick={() => onDelete(String(transaction.id))}
+                    disabled={deletingId === String(transaction.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
             );
@@ -309,8 +323,20 @@ function RelatorioSkeleton() {
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function RelatorioPage() {
+  const queryClient = useQueryClient();
   const [selectedYear, setSelectedYear] = useState<number>(CURRENT_YEAR);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(new Date().getMonth());
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) =>
+      api.delete<{ data: { removed: boolean } }>(apiEndpoints.transactions.delete(id)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("Transação removida");
+    },
+    onError: () => toast.error("Erro ao remover transação"),
+  });
 
   // period=30d é uma janela relativa que só olha pra trás a partir de hoje,
   // então nunca trazia lançamentos fora dos últimos 30 dias (incluindo
@@ -858,6 +884,8 @@ export default function RelatorioPage() {
                       monthIndex={monthIndex}
                       transactions={txs}
                       catMap={catMap}
+                      onDelete={(id) => deleteMutation.mutate(id)}
+                      deletingId={deleteMutation.isPending ? (deleteMutation.variables ?? null) : null}
                     />
                   );
                 })

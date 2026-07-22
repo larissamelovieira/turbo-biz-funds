@@ -15,6 +15,13 @@ export interface ApiTransaction {
   amount: number;
   description: string | null;
   occurredAt: string;
+  /**
+   * TODO(backend): vínculo real transação↔cartão. Ainda não existe no
+   * CreateTransactionDto/response da API (ver CARTAO_TRANSACAO_TODO.md).
+   * Já é enviado no create e lido aqui para não exigir outro deploy
+   * do frontend quando o backend passar a suportar.
+   */
+  cardId?: string | null;
 }
 
 export interface ApiCategory {

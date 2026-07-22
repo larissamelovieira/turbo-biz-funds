@@ -72,10 +72,12 @@ function addInterval(date: Date, frequency: Recurrence["frequency"]): Date {
   return d;
 }
 
-/** Returns all installment dates from startDate to endDate (inclusive).
- *  O endDate na API pode ser startDate + N meses (N = número de parcelas),
- *  então calculamos diffMonths entre start e end, e esse é o total de parcelas.
- *  Ex: jul/2026 a jul/2027 = 12 meses de diff = 12 parcelas (jul..jun).
+/** Returns all installment dates from startDate to endDate, ambos inclusive.
+ *  endDate é o mês da última parcela (ex: calcEndDate em Recorrencias.tsx
+ *  monta start + (N-1) meses = mês da própria N-ésima parcela). Por isso o
+ *  total de parcelas é a diferença de meses entre start e end MAIS UM —
+ *  sem o +1 a última parcela (o próprio mês de endDate) ficava de fora.
+ *  Ex: jul/2026 a jun/2027 = 11 meses de diff + 1 = 12 parcelas (jul..jun).
  */
 function buildInstallments(
   startDate: string,
@@ -85,13 +87,12 @@ function buildInstallments(
   const dates: Date[] = [];
   const start = parseLocalDate(startDate);
   const end = parseLocalDate(endDate);
-  const diffMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+  const diffMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
   const departure = new Date(start);
   for (let i = 0; i < diffMonths; i++) {
     const parcelDate = new Date(departure.getFullYear(), departure.getMonth() + i, departure.getDate());
     dates.push(parcelDate);
   }
-  console.log("buildInstallments result:", dates.map(d => `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`));
   return dates;
 }
 

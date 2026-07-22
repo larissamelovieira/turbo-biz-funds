@@ -201,19 +201,49 @@ const CardsPage = memo(() => {
     setUsageCard(card);
     setUsageAmount("");
     setUsageDescription("");
-    setUsageType("gasto");
+    setUsageType(card.used >= card.limit ? "pagamento" : "gasto");
     setUsageCategoryId("");
   };
 
-  const handleUsage = () => {
+  const handleUsage = async () => {
     if (!usageCard) return;
     const amount = parseFloat(usageAmount);
     if (!amount || amount <= 0) { toast.error("Informe um valor válido"); return; }
     if (usageType === "gasto" && !usageCategoryId) { toast.error("Selecione uma categoria"); return; }
     const usedBefore = usageCard.used;
+    const available = usageCard.limit - usedBefore;
+    if (usageType === "gasto" && available <= 0) {
+      toast.error("Limite do cartão já foi totalmente utilizado.");
+      return;
+    }
+    if (usageType === "gasto" && amount > available) {
+      toast.error(`Valor excede o limite disponível (${available.toFixed(2)}).`);
+      return;
+    }
     const newUsed = usageType === "gasto"
-      ? Math.min(usedBefore + amount, usageCard.limit)
+      ? usedBefore + amount
       : Math.max(0, usedBefore - amount);
+
+    if (usageType === "gasto") {
+      try {
+        await api.post(apiEndpoints.transactions.create, {
+          categoryId: usageCategoryId,
+          type: "EXPENSE",
+          amount,
+          description: `${usageDescription.trim() || "Gasto"} (${usageCard.name})`,
+          occurredAt: new Date().toISOString(),
+          // TODO(backend): campo ignorado até a API aceitar cardId em
+          // CreateTransactionDto. Ver CARTAO_TRANSACAO_TODO.md.
+          cardId: String(usageCard.id),
+        });
+      } catch {
+        toast.error("Falhou ao registrar a despesa. Nada foi alterado no cartão.");
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    }
+
     updateCard.mutate(
       { id: String(usageCard.id), used: newUsed },
       {
@@ -225,22 +255,19 @@ const CardsPage = memo(() => {
             usedBefore,
             usedAfter: newUsed,
           });
-          if (usageType === "gasto") {
-            api.post(apiEndpoints.transactions.create, {
-              categoryId: usageCategoryId,
-              type: "EXPENSE",
-              amount,
-              description: `${usageDescription.trim() || "Gasto"} (${usageCard.name})`,
-              occurredAt: new Date().toISOString(),
-            }).then(() => {
-              queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-              queryClient.invalidateQueries({ queryKey: ["transactions"] });
-            }).catch(() => toast.error("Gasto no cartão salvo, mas falhou ao somar nas despesas"));
-          }
-          toast.success(usageType === "gasto" ? "Gasto registrado!" : "Pagamento registrado!");
+          toast.success(
+            usageType === "gasto"
+              ? "Gasto registrado e somado nas despesas!"
+              : "Pagamento registrado!"
+          );
           setUsageCard(null);
         },
-        onError: () => toast.error("Erro ao atualizar limite"),
+        onError: () =>
+          toast.error(
+            usageType === "gasto"
+              ? "Despesa registrada, mas falhou ao atualizar o limite do cartão."
+              : "Erro ao atualizar limite"
+          ),
       }
     );
   };
@@ -508,11 +535,18 @@ const CardsPage = memo(() => {
                 <span>Limite: <strong>{fmtBRL(usageCard.limit)}</strong></span>
               </div>
             )}
+            {usageCard && usageCard.used >= usageCard.limit && (
+              <p className="text-sm text-red-500 bg-red-500/10 rounded-lg px-4 py-2">
+                Limite totalmente utilizado. Registre um pagamento para liberar espaço.
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
+                disabled={!!usageCard && usageCard.used >= usageCard.limit}
                 onClick={() => setUsageType("gasto")}
-                className={`flex items-center justify-center gap-2 rounded-lg border-2 py-2.5 text-sm font-medium transition-colors ${
+                title={usageCard && usageCard.used >= usageCard.limit ? "Limite do cartão já foi totalmente utilizado" : undefined}
+                className={`flex items-center justify-center gap-2 rounded-lg border-2 py-2.5 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                   usageType === "gasto" ? "border-red-500 bg-red-500/10 text-red-500" : "border-border text-muted-foreground hover:border-red-400/40"
                 }`}
               >
