@@ -30,6 +30,8 @@ import {
   useDeleteRecurrence,
 } from "@/features/recurrences/hooks/use-recurrences";
 import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useCards, useUpdateCard } from "@/features/cards/hooks/use-cards";
+import { useAddCardHistory } from "@/features/cards/hooks/use-card-history";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, apiEndpoints } from "@/lib/api/client";
 import type { RecurrencePayload } from "@/shared/types";
@@ -67,6 +69,11 @@ const RecorrenciasPage = memo(() => {
   const [acrescimo, setAcrescimo] = useState(0);
   const [isNewCategory, setIsNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [selectedCardId, setSelectedCardId] = useState<string>("");
+
+  const { cards } = useCards();
+  const updateCard = useUpdateCard();
+  const addCardHistory = useAddCardHistory(selectedCardId || null);
 
   const createCategory = useMutation({
     mutationFn: (name: string) =>
@@ -133,6 +140,16 @@ const RecorrenciasPage = memo(() => {
     }
     const rawAmount = Number(form.amount);
     const parcelAmount = (rawAmount * (1 + acrescimo / 100)) / installments;
+
+    const selectedCard = isInstallment && selectedCardId
+      ? cards.find((c) => String(c.id) === selectedCardId)
+      : undefined;
+    const totalPurchase = rawAmount * (1 + acrescimo / 100);
+    if (selectedCard && totalPurchase > selectedCard.limit - selectedCard.used) {
+      toast.error("Compra excede o limite disponível do cartão selecionado.");
+      return;
+    }
+
     const payload: RecurrencePayload = {
       categoryId: form.categoryId,
       type: form.type,
@@ -159,6 +176,7 @@ const RecorrenciasPage = memo(() => {
       setIsInstallment(false);
       setInstallments(2);
       setAcrescimo(0);
+      setSelectedCardId("");
       setForm({ ...defaultForm(), amount: "" } as RecurrencePayload & { amount: string });
     };
 
@@ -185,6 +203,26 @@ const RecorrenciasPage = memo(() => {
       } catch {
         toast.error("Erro ao criar parcelas — algumas podem ter sido salvas");
         return;
+      }
+
+      // Compra parcelada num cartão consome o limite inteiro de uma vez
+      // (como numa fatura real), não parcela por parcela — mesma lógica
+      // do "Atualizar uso" em Cards.tsx.
+      if (selectedCard) {
+        const usedBefore = selectedCard.used;
+        const usedAfter = usedBefore + totalPurchase;
+        try {
+          await updateCard.mutateAsync({ id: String(selectedCard.id), used: usedAfter });
+          await addCardHistory.mutateAsync({
+            type: "expense",
+            amount: totalPurchase,
+            description: `${form.description?.trim() || "Compra parcelada"} (${installments}x)`,
+            usedBefore,
+            usedAfter,
+          });
+        } catch {
+          toast.error("Parcelas lançadas, mas falhou ao descontar do limite do cartão.");
+        }
       }
     } else {
       // Mesma lógica do parcelado: recorrência sozinha não aparece no
@@ -624,6 +662,48 @@ const RecorrenciasPage = memo(() => {
                         </div>
                       )}
                     </div>
+
+                    {cards.length > 0 && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Cartão de crédito <span className="normal-case font-normal">(opcional)</span>
+                        </Label>
+                        <Select
+                          value={selectedCardId || "none"}
+                          onValueChange={(v) => setSelectedCardId(v === "none" ? "" : v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nenhum (não é no cartão)</SelectItem>
+                            {cards.map((c) => (
+                              <SelectItem key={c.id} value={String(c.id)}>
+                                {c.name} — {fmtBRL(Math.max(0, c.limit - c.used))} disponível
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {selectedCardId && (() => {
+                          const card = cards.find((c) => String(c.id) === selectedCardId);
+                          if (!card) return null;
+                          const totalPurchase = Number(form.amount) * (1 + acrescimo / 100);
+                          const available = card.limit - card.used;
+                          if (totalPurchase > available) {
+                            return (
+                              <p className="text-xs text-red-500 font-medium">
+                                Compra ({fmtBRL(totalPurchase)}) excede o limite disponível do cartão ({fmtBRL(available)}).
+                              </p>
+                            );
+                          }
+                          return (
+                            <p className="text-xs text-muted-foreground">
+                              O valor total da compra ({fmtBRL(totalPurchase)}) será descontado do limite do cartão de uma vez, como numa fatura real.
+                            </p>
+                          );
+                        })()}
+                      </div>
+                    )}
 
                     {Number(form.amount) > 0 && (() => {
                       const totalComAcrescimo = Number(form.amount) * (1 + acrescimo / 100);

@@ -53,7 +53,7 @@ const PERIOD_OPTIONS: { value: Period; label: string }[] = [
   { value: "30d", label: "30 dias" },
 ];
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 6;
 
 const TransactionsPageSkeleton = () => (
   <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6 animate-pulse">
