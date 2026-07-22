@@ -188,7 +188,9 @@ const GoalsPage = memo(() => {
       const categoryId = await resolveCategoryId(categoryName, categories);
       queryClient.invalidateQueries({ queryKey: ["categories"] });
 
-      await updateGoal.mutateAsync({ id: editGoal.id, current: newCurrent });
+      // Lança a despesa ANTES de atualizar a meta: se a transação falhar,
+      // a meta permanece intocada em vez de mostrar progresso sem despesa
+      // correspondente em Transações/Dashboard/Relatório.
       await createTransaction.mutateAsync({
         categoryId,
         type: "EXPENSE",
@@ -196,6 +198,7 @@ const GoalsPage = memo(() => {
         description: `Aporte meta: ${editGoal.name}`,
         occurredAt: new Date().toISOString(),
       });
+      await updateGoal.mutateAsync({ id: editGoal.id, current: newCurrent });
 
       if (newCurrent >= editGoal.target) {
         toast.success(`🎉 Meta "${editGoal.name}" concluída!`);
