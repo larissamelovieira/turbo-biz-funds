@@ -232,9 +232,6 @@ const CardsPage = memo(() => {
           amount,
           description: `${usageDescription.trim() || "Gasto"} (${usageCard.name})`,
           occurredAt: new Date().toISOString(),
-          // TODO(backend): campo ignorado até a API aceitar cardId em
-          // CreateTransactionDto. Ver CARTAO_TRANSACAO_TODO.md.
-          cardId: String(usageCard.id),
         });
       } catch {
         toast.error("Falhou ao registrar a despesa. Nada foi alterado no cartão.");

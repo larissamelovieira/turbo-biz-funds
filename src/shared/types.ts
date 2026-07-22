@@ -17,9 +17,11 @@ export interface ApiTransaction {
   occurredAt: string;
   /**
    * TODO(backend): vínculo real transação↔cartão. Ainda não existe no
-   * CreateTransactionDto/response da API (ver CARTAO_TRANSACAO_TODO.md).
-   * Já é enviado no create e lido aqui para não exigir outro deploy
-   * do frontend quando o backend passar a suportar.
+   * CreateTransactionDto/response da API — confirmado em produção que a
+   * validação (class-validator whitelist) rejeita com 422 "property cardId
+   * should not exist" se enviado no create. NÃO mandar no payload até o
+   * backend aceitar (ver CARTAO_TRANSACAO_TODO.md). Campo mantido aqui só
+   * para leitura futura, caso a API passe a devolvê-lo.
    */
   cardId?: string | null;
 }

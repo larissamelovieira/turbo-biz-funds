@@ -30,13 +30,16 @@ dá pra inferir lendo o texto da `description`.
 
 ## O que já foi preparado no frontend
 
-- `ApiTransaction.cardId?: string | null` já existe em `src/shared/types.ts`
-  — opcional, pra não quebrar nada enquanto a API não devolve o campo.
-- O `POST /v1/transactions` disparado em `Cards.tsx` já manda
-  `cardId: String(usageCard.id)` no payload. A API atual ignora campos
-  desconhecidos, então isso não quebra nada — no dia que o backend passar a
-  aceitar/persistir `cardId`, o frontend já está mandando o dado certo sem
-  precisar de novo deploy.
+- `ApiTransaction.cardId?: string | null` existe em `src/shared/types.ts`
+  — opcional, só leitura, pra quando a API passar a devolver o campo.
+- **Tentativa revertida:** chegamos a mandar `cardId` no `POST
+  /v1/transactions` em `Cards.tsx`, mas a API **rejeita com 422** —
+  `"property cardId should not exist"` (validação `class-validator` com
+  whitelist estrito, confirmado em produção em 2026-07-22). Ou seja, ao
+  contrário do que se imaginava, campo desconhecido **não** é ignorado —
+  ele quebra a criação da transação inteira. Removido do payload. **Não
+  reenviar `cardId` no create até o backend adicionar o campo no
+  `CreateTransactionDto`.**
 
 ## O que falta no backend
 

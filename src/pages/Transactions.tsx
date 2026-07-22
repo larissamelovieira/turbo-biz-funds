@@ -1,5 +1,5 @@
 import { memo, useState } from "react";
-import { Receipt, Plus, Search, ArrowUpRight, ArrowDownRight, Loader2, Trash2, TrendingUp, TrendingDown, Wallet } from "lucide-react";
+import { Receipt, Plus, Search, ArrowUpRight, ArrowDownRight, Loader2, Trash2, TrendingUp, TrendingDown, Wallet, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +53,8 @@ const PERIOD_OPTIONS: { value: Period; label: string }[] = [
   { value: "30d", label: "30 dias" },
 ];
 
+const PAGE_SIZE = 20;
+
 const TransactionsPageSkeleton = () => (
   <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6 animate-pulse">
     <PageHeaderSkeleton />
@@ -69,6 +71,7 @@ const TransactionsPage = memo(() => {
   const [period, setPeriod] = useState<Period>("30d");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("ALL");
+  const [page, setPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [form, setForm] = useState({
     categoryId: "",
@@ -135,6 +138,10 @@ const TransactionsPage = memo(() => {
   const totalIncome = filtered.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amount, 0);
   const totalExpense = filtered.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amount, 0);
   const balance = totalIncome - totalExpense;
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
 
   const createMutation = useMutation({
@@ -293,7 +300,7 @@ const TransactionsPage = memo(() => {
                 placeholder="Buscar por descrição ou categoria..."
                 className="pl-10 w-full"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               />
             </div>
             <div className="flex flex-wrap gap-2">
@@ -301,7 +308,7 @@ const TransactionsPage = memo(() => {
               {(["ALL", "INCOME", "EXPENSE"] as TypeFilter[]).map((t) => (
                 <button
                   key={t}
-                  onClick={() => setTypeFilter(t)}
+                  onClick={() => { setTypeFilter(t); setPage(1); }}
                   className={`px-3 py-1.5 text-sm rounded-lg border transition-colors font-medium ${
                     typeFilter === t
                       ? t === "INCOME"
@@ -319,7 +326,7 @@ const TransactionsPage = memo(() => {
                 {PERIOD_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
-                    onClick={() => setPeriod(opt.value)}
+                    onClick={() => { setPeriod(opt.value); setPage(1); }}
                     className={`px-3 py-1 text-sm rounded-md transition-colors font-medium ${
                       period === opt.value
                         ? "bg-background text-foreground shadow-sm"
@@ -354,7 +361,7 @@ const TransactionsPage = memo(() => {
             </div>
           ) : (
             <div className="space-y-2">
-              {filtered.map((transaction) => {
+              {paginated.map((transaction) => {
                 const isIncome = transaction.type === "INCOME";
                 const catName = catMap.get(transaction.categoryId) ?? "Sem categoria";
                 const date = new Date(transaction.occurredAt).toLocaleDateString("pt-BR", {
@@ -427,6 +434,36 @@ const TransactionsPage = memo(() => {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between gap-3 mt-5 pt-4 border-t border-border">
+              <span className="text-xs text-muted-foreground">
+                Página {currentPage} de {totalPages}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  aria-label="Página anterior"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  aria-label="Próxima página"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

@@ -6,6 +6,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  LabelList,
 } from "recharts";
 import { TrendingDown } from "lucide-react";
 import { ExpenseByDay } from "../types";
@@ -36,7 +37,7 @@ export const ExpenseChart = ({ data }: ExpenseChartProps) => {
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={data} margin={{ top: 4, right: 12, left: -16, bottom: 0 }}>
+            <LineChart data={data} margin={{ top: 24, right: 12, left: -16, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 93%)" vertical={false} />
               <XAxis
                 dataKey="day"
@@ -69,7 +70,15 @@ export const ExpenseChart = ({ data }: ExpenseChartProps) => {
                 strokeWidth={2.5}
                 dot={{ fill: "#ef4444", r: 3, strokeWidth: 0 }}
                 activeDot={{ r: 5, fill: "#ef4444", strokeWidth: 0 }}
-              />
+              >
+                <LabelList
+                  dataKey="value"
+                  position="top"
+                  offset={10}
+                  formatter={(value: number) => fmtBRL(value)}
+                  style={{ fontSize: 11, fontWeight: 600, fill: "#ef4444" }}
+                />
+              </Line>
             </LineChart>
           </ResponsiveContainer>
         )}
