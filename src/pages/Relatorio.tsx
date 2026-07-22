@@ -19,6 +19,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, apiEndpoints } from "@/lib/api/client";
 import { useActiveRecurrences } from "@/features/recurrences/hooks/use-recurrences";
+import { useCategories } from "@/features/categories/hooks/use-categories";
 import { fmtBRL, fmtNumber } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -45,11 +46,6 @@ interface ApiTransaction {
   description: string | null;
   occurredAt: string;
   recurringId?: string | null;
-}
-
-interface ApiCategory {
-  id: string;
-  name: string;
 }
 
 interface Recurrence {
@@ -380,12 +376,7 @@ export default function RelatorioPage() {
   });
 
   // Fetch categories
-  const { data: categoriesRes, isLoading: isLoadingCategories } = useQuery({
-    queryKey: ["categories"],
-    queryFn: () =>
-      api.get<{ data: ApiCategory[] }>(apiEndpoints.categories.list),
-    staleTime: 5 * 60 * 1000,
-  });
+  const { categories, isLoading: isLoadingCategories } = useCategories();
 
   // Fetch recurrences — usa o mesmo hook (e mesma query key) das outras páginas
   const { recurrences, isLoading: isLoadingRecurrences } = useActiveRecurrences();
@@ -394,7 +385,6 @@ export default function RelatorioPage() {
     isLoadingTransactions || isLoadingCategories || isLoadingRecurrences;
 
   const allTransactions = transactionsRes?.data ?? [];
-  const categories = categoriesRes?.data ?? [];
 
   const catMap = useMemo(
     () => new Map(categories.map((c) => [c.id, c.name])),

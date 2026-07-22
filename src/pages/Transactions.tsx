@@ -19,6 +19,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { fmtBRL } from "@/lib/format";
 import { useActiveRecurrences } from "@/features/recurrences/hooks/use-recurrences";
+import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useCardExpenses } from "@/features/cards/hooks/use-card-expenses";
 
 interface ApiTransaction {
   id: string;
@@ -30,9 +32,14 @@ interface ApiTransaction {
   recurringId?: string | null;
 }
 
-interface ApiCategory {
-  id: string;
-  name: string;
+// O seletor de data do formulário não tem hora — sem isso, toda transação
+// criada num mesmo dia grava meia-noite e o Histórico não consegue ordenar
+// pela ordem real de cadastro. Carimba a hora atual em cima da data escolhida.
+function withCurrentTime(dateStr: string): Date {
+  const d = new Date(dateStr);
+  const now = new Date();
+  d.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+  return d;
 }
 
 function monthlyEquivalent(amount: number, frequency: string): number {
@@ -91,17 +98,30 @@ const TransactionsPage = memo(() => {
     staleTime: 2 * 60 * 1000,
   });
 
-  const { data: categoriesRes, isLoading: isCategoriesLoading } = useQuery({
-    queryKey: ["categories"],
-    queryFn: () => api.get<{ data: ApiCategory[] }>(apiEndpoints.categories.list),
-    staleTime: 5 * 60 * 1000,
-  });
+  const { categories, isLoading: isCategoriesLoading } = useCategories();
 
   const { recurrences } = useActiveRecurrences();
+  const { entries: cardExpenses, isLoading: isCardExpensesLoading } = useCardExpenses();
 
   const transactions = transactionsRes?.data ?? [];
-  const categories = categoriesRes?.data ?? [];
   const catMap = new Map(categories.map((c) => [c.id, c.name]));
+
+  // Gasto no cartão vive numa tabela separada (/v1/cards/:id/history), não em
+  // /v1/transactions — mesclamos aqui só pra exibição em Despesas, sem
+  // duplicar dado nenhum entre as duas tabelas.
+  const periodDays = period === "weekly" ? 7 : period === "15d" ? 15 : 30;
+  const periodCutoff = Date.now() - periodDays * 24 * 60 * 60 * 1000;
+  const cardExpenseEntries: (ApiTransaction & { isCardExpense?: boolean })[] = cardExpenses
+    .filter((c) => new Date(c.occurredAt).getTime() >= periodCutoff)
+    .map((c) => ({
+      id: c.id,
+      categoryId: "",
+      type: "EXPENSE",
+      amount: c.amount,
+      description: c.description,
+      occurredAt: c.occurredAt,
+      isCardExpense: true,
+    }));
 
   // Recorrências ativas ainda sem transação real lançada nesse período —
   // viram entradas sintéticas pra que a lista e os cards batam (antes o
@@ -122,18 +142,20 @@ const TransactionsPage = memo(() => {
       isRecurringProjection: true,
     }));
 
-  const transactionsWithRecurring = [...transactions, ...unpaidRecurrenceEntries];
+  const transactionsWithRecurring = [...transactions, ...unpaidRecurrenceEntries, ...cardExpenseEntries];
 
-  const filtered = transactionsWithRecurring.filter((t) => {
-    if (typeFilter !== "ALL" && t.type !== typeFilter) return false;
-    if (!search) return true;
-    const catName = catMap.get(t.categoryId) ?? "";
-    const desc = t.description ?? "";
-    return (
-      desc.toLowerCase().includes(search.toLowerCase()) ||
-      catName.toLowerCase().includes(search.toLowerCase())
-    );
-  });
+  const filtered = transactionsWithRecurring
+    .filter((t) => {
+      if (typeFilter !== "ALL" && t.type !== typeFilter) return false;
+      if (!search) return true;
+      const catName = catMap.get(t.categoryId) ?? "";
+      const desc = t.description ?? "";
+      return (
+        desc.toLowerCase().includes(search.toLowerCase()) ||
+        catName.toLowerCase().includes(search.toLowerCase())
+      );
+    })
+    .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
 
   const totalIncome = filtered.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amount, 0);
   const totalExpense = filtered.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amount, 0);
@@ -201,7 +223,7 @@ const TransactionsPage = memo(() => {
       }
       const installmentAmount = Math.round((total / count) * 100) / 100;
       const roundingAdjustment = Math.round((total - installmentAmount * count) * 100) / 100;
-      const baseDate = new Date(form.occurredAt);
+      const baseDate = withCurrentTime(form.occurredAt);
 
       setIsCreatingInstallments(true);
       try {
@@ -234,7 +256,7 @@ const TransactionsPage = memo(() => {
       type: form.type,
       amount: total,
       description: form.description || undefined,
-      occurredAt: new Date(form.occurredAt).toISOString(),
+      occurredAt: withCurrentTime(form.occurredAt).toISOString(),
     });
   };
 

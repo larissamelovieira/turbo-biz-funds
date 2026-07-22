@@ -23,8 +23,6 @@ import { toast } from "sonner";
 import { useCards, useCreateCard, useUpdateCard, useDeleteCard } from "@/features/cards/hooks/use-cards";
 import type { CreditCard as CreditCardType } from "@/features/cards/hooks/use-cards";
 import { useCardHistory, useAddCardHistory } from "@/features/cards/hooks/use-card-history";
-import { useCategories } from "@/features/categories/hooks/use-categories";
-import { api, apiEndpoints } from "@/lib/api/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { fmtBRL } from "@/lib/format";
 
@@ -154,7 +152,6 @@ const CardsPage = memo(() => {
   const createCard = useCreateCard();
   const updateCard = useUpdateCard();
   const deleteCard = useDeleteCard();
-  const { categories } = useCategories();
   const queryClient = useQueryClient();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -164,7 +161,6 @@ const CardsPage = memo(() => {
   const [usageAmount, setUsageAmount] = useState("");
   const [usageDescription, setUsageDescription] = useState("");
   const [usageType, setUsageType] = useState<"gasto" | "pagamento">("gasto");
-  const [usageCategoryId, setUsageCategoryId] = useState("");
   const [form, setForm] = useState(EMPTY_FORM);
   const [editForm, setEditForm] = useState(EMPTY_FORM);
 
@@ -202,14 +198,12 @@ const CardsPage = memo(() => {
     setUsageAmount("");
     setUsageDescription("");
     setUsageType(card.used >= card.limit ? "pagamento" : "gasto");
-    setUsageCategoryId("");
   };
 
   const handleUsage = async () => {
     if (!usageCard) return;
     const amount = parseFloat(usageAmount);
     if (!amount || amount <= 0) { toast.error("Informe um valor válido"); return; }
-    if (usageType === "gasto" && !usageCategoryId) { toast.error("Selecione uma categoria"); return; }
     const usedBefore = usageCard.used;
     const available = usageCard.limit - usedBefore;
     if (usageType === "gasto" && available <= 0) {
@@ -223,23 +217,6 @@ const CardsPage = memo(() => {
     const newUsed = usageType === "gasto"
       ? usedBefore + amount
       : Math.max(0, usedBefore - amount);
-
-    if (usageType === "gasto") {
-      try {
-        await api.post(apiEndpoints.transactions.create, {
-          categoryId: usageCategoryId,
-          type: "EXPENSE",
-          amount,
-          description: `${usageDescription.trim() || "Gasto"} (${usageCard.name})`,
-          occurredAt: new Date().toISOString(),
-        });
-      } catch {
-        toast.error("Falhou ao registrar a despesa. Nada foi alterado no cartão.");
-        return;
-      }
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-    }
 
     updateCard.mutate(
       { id: String(usageCard.id), used: newUsed },
@@ -262,7 +239,7 @@ const CardsPage = memo(() => {
         onError: () =>
           toast.error(
             usageType === "gasto"
-              ? "Despesa registrada, mas falhou ao atualizar o limite do cartão."
+              ? "Erro ao registrar o gasto"
               : "Erro ao atualizar limite"
           ),
       }
@@ -559,21 +536,6 @@ const CardsPage = memo(() => {
                 <ArrowDownCircle className="w-4 h-4" /> Pagamento
               </button>
             </div>
-            {usageType === "gasto" && (
-              <div className="space-y-2">
-                <Label>Categoria</Label>
-                <select
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                  value={usageCategoryId}
-                  onChange={(e) => setUsageCategoryId(e.target.value)}
-                >
-                  <option value="">Selecione...</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
             <div className="space-y-2">
               <Label>Descrição (opcional)</Label>
               <Input

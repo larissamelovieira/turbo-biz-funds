@@ -38,7 +38,7 @@ function lsAdd(cardId: string, entry: CardHistoryEntry) {
 
 // ---------- fetch with API-first, localStorage fallback ----------
 
-async function fetchHistory(cardId: string): Promise<CardHistoryEntry[]> {
+export async function fetchHistory(cardId: string): Promise<CardHistoryEntry[]> {
   try {
     const res = await api.get<{ data: CardHistoryEntry[] } | CardHistoryEntry[]>(apiEndpoints.cards.history(cardId));
     const remote = Array.isArray(res) ? res : ((res as { data: CardHistoryEntry[] }).data ?? []);

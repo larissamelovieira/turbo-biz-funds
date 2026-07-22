@@ -44,6 +44,16 @@ const FREQUENCY_LABELS: Record<string, string> = {
   yearly: "Anual",
 };
 
+// Seletor de data não tem hora — sem isso toda transação lançada aqui grava
+// meia-noite e o Histórico de Transações não ordena pela ordem real de
+// cadastro. Carimba a hora atual em cima da data escolhida.
+function withCurrentTime(dateStr: string): Date {
+  const d = new Date(dateStr);
+  const now = new Date();
+  d.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+  return d;
+}
+
 const defaultForm = (): RecurrencePayload => ({
   categoryId: "",
   type: "EXPENSE",
@@ -187,7 +197,7 @@ const RecorrenciasPage = memo(() => {
       const roundingAdjustment = Math.round((rawAmount * (1 + acrescimo / 100) - parcelAmount * installments) * 100) / 100;
       try {
         for (let i = 0; i < installments; i++) {
-          const occurredAt = new Date(form.startDate);
+          const occurredAt = withCurrentTime(form.startDate);
           occurredAt.setMonth(occurredAt.getMonth() + i);
           const amount = i === installments - 1 ? parcelAmount + roundingAdjustment : parcelAmount;
           await api.post(apiEndpoints.transactions.create, {
@@ -234,7 +244,7 @@ const RecorrenciasPage = memo(() => {
           type: form.type,
           amount: rawAmount,
           description: form.description?.trim() || (form.type === "EXPENSE" ? "Despesa fixa" : "Receita fixa"),
-          occurredAt: payload.startDate,
+          occurredAt: withCurrentTime(form.startDate).toISOString(),
         });
         queryClient.invalidateQueries({ queryKey: ["transactions"] });
         queryClient.invalidateQueries({ queryKey: ["dashboard"] });
