@@ -26,6 +26,15 @@ function formatDateToBR(dateString: string): string {
   }
 }
 
+// Doutor Cash não tem cobrança mensal recorrente: PIX é pago à vista (1x/ano)
+// e cartão é parcelado em até 12x — nenhum dos dois é "/mês" de assinatura.
+function billingUnitLabel(paymentMethod: string): string {
+  const m = paymentMethod?.toLowerCase() ?? "";
+  if (m.includes("pix")) return "/ano";
+  if (m.includes("card") || m.includes("credit") || m.includes("cart")) return "/parcela";
+  return "";
+}
+
 import {
   Search,
   Filter,
@@ -156,7 +165,7 @@ export default function AdminSubscriptions() {
                   <DollarSign className="h-5 w-5 text-emerald-500" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Receita Mensal</p>
+                  <p className="text-sm text-muted-foreground">Receita Total (Assinaturas)</p>
                   <p className="text-xl font-bold">R$ {stats.totalRevenue.toFixed(2)}</p>
                 </div>
               </div>
@@ -299,7 +308,7 @@ export default function AdminSubscriptions() {
                         {sub.amount > 0 ? `R$ ${sub.amount.toFixed(2)}` : "Gratuito"}
                       </span>
                       {sub.amount > 0 && (
-                        <span className="text-xs text-muted-foreground ml-1">/mês</span>
+                        <span className="text-xs text-muted-foreground ml-1">{billingUnitLabel(sub.paymentMethod)}</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -475,7 +484,7 @@ export default function AdminSubscriptions() {
 
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span className="font-medium text-foreground text-sm">
-                      {sub.amount > 0 ? `R$ ${sub.amount.toFixed(2)}/mês` : "Gratuito"}
+                      {sub.amount > 0 ? `R$ ${sub.amount.toFixed(2)}${billingUnitLabel(sub.paymentMethod)}` : "Gratuito"}
                     </span>
                     <span>Próxima cobrança: {formatDateToBR(sub.nextBilling)}</span>
                   </div>

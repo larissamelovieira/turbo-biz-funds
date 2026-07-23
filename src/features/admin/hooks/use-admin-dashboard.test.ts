@@ -93,23 +93,19 @@ describe("useAdminDashboard", () => {
     expect(result.current.data!.stats).toHaveLength(4);
   });
 
-  it("deve formatar MRR corretamente", async () => {
+  it("deve formatar receita mensal corretamente", async () => {
     const { result } = renderHook(() => useAdminDashboard(), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.data?.stats).toBeDefined());
-    const mrrStat = result.current.data!.stats[0];
-    expect(mrrStat.title).toBe("Receita Mensal (MRR)");
-    expect(mrrStat.value).toContain("15");
-    expect(mrrStat.trend).toBe("up");
+    const revenueStat = result.current.data!.stats[0];
+    expect(revenueStat.title).toBe("Receita Mensal");
+    expect(revenueStat.value).toContain("15");
+    expect(revenueStat.trend).toBe("up");
   });
 
-  it("deve retornar revenueData derivado dos planos (6 meses)", async () => {
+  it("deve retornar revenueData vazio quando /v1/admin/revenue/chart falha (sem simular dado fictício)", async () => {
     const { result } = renderHook(() => useAdminDashboard(), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.data?.revenueData).toBeDefined());
-    // 6 meses: Jan, Fev, Mar, Abr, Mai, Jun
-    expect(result.current.data!.revenueData).toHaveLength(6);
-    expect(result.current.data!.revenueData[0].month).toBe("Jan");
-    expect(result.current.data!.revenueData[0].receita).toBeGreaterThan(0);
-    expect(result.current.data!.revenueData[0].clientes).toBeGreaterThan(0);
+    expect(result.current.data!.revenueData).toHaveLength(0);
   });
 
   it("deve retornar planDistribution derivado dos planos", async () => {

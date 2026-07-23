@@ -416,7 +416,7 @@ export default function AdminPlans() {
                 </div>
                 <div>
                   <div className="text-2xl font-bold">R$ {totalMRR.toLocaleString()}</div>
-                  <p className="text-sm text-muted-foreground">MRR Total</p>
+                  <p className="text-sm text-muted-foreground">Receita Total</p>
                 </div>
               </div>
             </CardContent>
@@ -548,7 +548,7 @@ export default function AdminPlans() {
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold">R$ {plan.mrr.toLocaleString()}</div>
-                        <p className="text-xs text-muted-foreground">MRR</p>
+                        <p className="text-xs text-muted-foreground">Receita</p>
                       </div>
                     </div>
 

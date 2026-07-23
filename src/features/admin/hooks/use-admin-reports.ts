@@ -130,67 +130,26 @@ function toArray<T>(val: unknown): T[] {
 }
 
 // ============================================
-// DADOS MOCK (FALLBACK)
+// VALORES PADRÃO QUANDO A API FALHA (sem dado fictício — fica vazio/zerado
+// e o endpoint entra em `failedEndpoints`, mostrado no banner de aviso)
 // ============================================
 
-const MOCK_STATS: AdminReportsStats = {
-  totalRevenue: 12450,
-  revenueChange: "+12%",
+const EMPTY_STATS: AdminReportsStats = {
+  totalRevenue: 0,
+  revenueChange: "+0%",
   revenueTrend: "up",
-  newUsers: 1234,
-  usersChange: "+8%",
+  newUsers: 0,
+  usersChange: "+0%",
   usersTrend: "up",
-  conversionRate: 23.4,
-  conversionChange: "+2.1%",
+  conversionRate: 0,
+  conversionChange: "+0%",
   conversionTrend: "up",
 };
 
-const MOCK_REVENUE_DATA: RevenueDataPoint[] = [
-  { month: "2026-01", revenue: 10000, expenses: 2000, netRevenue: 8000, mrr: 10000, newSubscriptions: 50, cancellations: 10, churnRate: 2.5 },
-  { month: "2026-02", revenue: 11000, expenses: 2200, netRevenue: 8800, mrr: 11000, newSubscriptions: 55, cancellations: 8, churnRate: 2.1 },
-  { month: "2026-03", revenue: 11500, expenses: 2400, netRevenue: 9100, mrr: 11500, newSubscriptions: 45, cancellations: 12, churnRate: 2.8 },
-  { month: "2026-04", revenue: 12000, expenses: 2500, netRevenue: 9500, mrr: 12000, newSubscriptions: 60, cancellations: 9, churnRate: 2.0 },
-  { month: "2026-05", revenue: 12450, expenses: 2600, netRevenue: 9850, mrr: 12450, newSubscriptions: 58, cancellations: 7, churnRate: 1.8 },
-];
-
-const MOCK_REVENUE_CHART: RevenueChartData = {
-  labels: ["Jan", "Fev", "Mar", "Abr", "Mai"],
-  datasets: {
-    revenue: [10000, 11000, 11500, 12000, 12450],
-    expenses: [2000, 2200, 2400, 2500, 2600],
-    netRevenue: [8000, 8800, 9100, 9500, 9850],
-  },
+const EMPTY_REVENUE_CHART: RevenueChartData = {
+  labels: [],
+  datasets: { revenue: [], expenses: [], netRevenue: [] },
 };
-
-const MOCK_USER_GROWTH: UserGrowthDataPoint[] = [
-  { period: "2026-01", totalUsers: 500, newUsers: 80, activeUsers: 420, inactiveUsers: 50, blockedUsers: 30 },
-  { period: "2026-02", totalUsers: 580, newUsers: 100, activeUsers: 480, inactiveUsers: 60, blockedUsers: 40 },
-  { period: "2026-03", totalUsers: 680, newUsers: 120, activeUsers: 550, inactiveUsers: 80, blockedUsers: 50 },
-  { period: "2026-04", totalUsers: 780, newUsers: 140, activeUsers: 630, inactiveUsers: 90, blockedUsers: 60 },
-  { period: "2026-05", totalUsers: 900, newUsers: 160, activeUsers: 720, inactiveUsers: 100, blockedUsers: 80 },
-];
-
-const MOCK_PLAN_DISTRIBUTION: PlanDistributionData[] = [
-  { planId: "free", planName: "Gratuito", subscribers: 500, revenue: 0, percentage: 65 },
-  { planId: "pro", planName: "Pro", subscribers: 200, revenue: 5980, percentage: 26 },
-  { planId: "business", planName: "Business", subscribers: 70, revenue: 6470, percentage: 9 },
-];
-
-const MOCK_CHURN_DATA: ChurnDataPoint[] = [
-  { period: "2026-01", cancelledCount: 10, cancelledRevenue: 299, churnRate: 2.5, reason: "cancelado pelo usuário" },
-  { period: "2026-02", cancelledCount: 8, cancelledRevenue: 249, churnRate: 2.1, reason: "falta de uso" },
-  { period: "2026-03", cancelledCount: 12, cancelledRevenue: 399, churnRate: 2.8, reason: "problemas financeiros" },
-  { period: "2026-04", cancelledCount: 9, cancelledRevenue: 299, churnRate: 2.0, reason: "cancelado pelo usuário" },
-  { period: "2026-05", cancelledCount: 7, cancelledRevenue: 199, churnRate: 1.8, reason: "falta de uso" },
-];
-
-const MOCK_CASHFLOW: CashflowEntry[] = [
-  { id: "1", date: "2026-05-01", type: "revenue", category: "assinatura", description: "Nova assinatura Pro", amount: 29.90, balance: 12450, subscriptionId: "sub-1", userId: "user-1" },
-  { id: "2", date: "2026-05-02", type: "revenue", category: "upgrade", description: "Upgrade para Business", amount: 99.90, balance: 12540, subscriptionId: "sub-2", userId: "user-2" },
-  { id: "3", date: "2026-05-03", type: "expense", category: "infraestrutura", description: "Servidor AWS", amount: -250, balance: 12290, subscriptionId: null, userId: null },
-  { id: "4", date: "2026-05-05", type: "revenue", category: "assinatura", description: "Renovação Business", amount: 99.90, balance: 12390, subscriptionId: "sub-3", userId: "user-3" },
-  { id: "5", date: "2026-05-06", type: "expense", category: "marketing", description: "Ads Facebook", amount: -150, balance: 12240, subscriptionId: null, userId: null },
-];
 
 // ============================================
 // FETCHERS
@@ -233,11 +192,11 @@ async function fetchRevenueChart(period: PeriodType): Promise<RevenueChartData> 
   const res = await api.get<any>(`${apiEndpoints.admin.revenue}/chart?period=${period}&year=${year}`);
   const data = res?.data ?? res;
   return {
-    labels: data?.labels ?? MOCK_REVENUE_CHART.labels,
+    labels: data?.labels ?? [],
     datasets: {
-      revenue: data?.datasets?.revenue ?? MOCK_REVENUE_CHART.datasets.revenue,
-      expenses: data?.datasets?.expenses ?? MOCK_REVENUE_CHART.datasets.expenses,
-      netRevenue: data?.datasets?.netRevenue ?? MOCK_REVENUE_CHART.datasets.netRevenue,
+      revenue: data?.datasets?.revenue ?? [],
+      expenses: data?.datasets?.expenses ?? [],
+      netRevenue: data?.datasets?.netRevenue ?? [],
     },
   };
 }
@@ -338,13 +297,13 @@ async function fetchAdminReports(period: PeriodType): Promise<AdminReportsData> 
   });
 
   return {
-    stats: extractData<AdminReportsStats>(stats) ?? MOCK_STATS,
-    revenueData: extractData<RevenueDataPoint[]>(revenueData) ?? MOCK_REVENUE_DATA,
-    revenueChart: extractData<RevenueChartData>(revenueChart) ?? MOCK_REVENUE_CHART,
-    userGrowth: extractData<UserGrowthDataPoint[]>(userGrowth) ?? MOCK_USER_GROWTH,
-    planDistribution: extractData<PlanDistributionData[]>(planDistribution) ?? MOCK_PLAN_DISTRIBUTION,
-    churnData: extractData<ChurnDataPoint[]>(churnData) ?? MOCK_CHURN_DATA,
-    cashflow: extractData<CashflowEntry[]>(cashflow) ?? MOCK_CASHFLOW,
+    stats: extractData<AdminReportsStats>(stats) ?? EMPTY_STATS,
+    revenueData: extractData<RevenueDataPoint[]>(revenueData) ?? [],
+    revenueChart: extractData<RevenueChartData>(revenueChart) ?? EMPTY_REVENUE_CHART,
+    userGrowth: extractData<UserGrowthDataPoint[]>(userGrowth) ?? [],
+    planDistribution: extractData<PlanDistributionData[]>(planDistribution) ?? [],
+    churnData: extractData<ChurnDataPoint[]>(churnData) ?? [],
+    cashflow: extractData<CashflowEntry[]>(cashflow) ?? [],
     failedEndpoints,
     apiErrors,
   };
@@ -363,8 +322,3 @@ export function useAdminReports(period: PeriodType = "monthly") {
   });
 }
 
-// ============================================
-// EXPORTS
-// ============================================
-
-export { MOCK_STATS, MOCK_REVENUE_DATA, MOCK_USER_GROWTH, MOCK_PLAN_DISTRIBUTION, MOCK_CHURN_DATA };

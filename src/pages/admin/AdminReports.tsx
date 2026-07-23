@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import * as XLSX from "xlsx";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -313,6 +314,102 @@ export default function AdminReports() {
     };
   }, [data]);
 
+  function exportAllReports() {
+    if (!data) return;
+    const wb = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+      data.revenueData.map((r) => ({
+        Mês: r.month,
+        "Receita (R$)": r.revenue,
+        "Despesas (R$)": r.expenses,
+        "Receita Líquida (R$)": r.netRevenue,
+        "Novas Assinaturas": r.newSubscriptions,
+        Cancelamentos: r.cancellations,
+        "Churn (%)": r.churnRate,
+      }))
+    ), "Receita");
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+      data.userGrowth.map((u) => ({
+        Período: u.period,
+        "Total de Usuários": u.totalUsers,
+        "Novos Usuários": u.newUsers,
+        "Usuários Ativos": u.activeUsers,
+        "Usuários Inativos": u.inactiveUsers,
+        Bloqueados: u.blockedUsers,
+      }))
+    ), "Usuários");
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+      data.planDistribution.map((p) => ({
+        Plano: p.planName,
+        Assinantes: p.subscribers,
+        "Receita (R$)": p.revenue,
+        "Participação (%)": p.percentage,
+      }))
+    ), "Planos");
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+      data.churnData.map((c) => ({
+        Período: c.period,
+        Cancelamentos: c.cancelledCount,
+        "Receita Perdida (R$)": c.cancelledRevenue,
+        "Taxa de Churn (%)": c.churnRate,
+        Motivo: c.reason,
+      }))
+    ), "Churn");
+
+    XLSX.writeFile(wb, `relatorios_admin_${selectedPeriod}.xlsx`);
+  }
+
+  function exportRevenueExcel() {
+    if (!data) return;
+    const ws = XLSX.utils.json_to_sheet(
+      data.revenueData.map((r) => ({
+        Mês: r.month,
+        "Receita (R$)": r.revenue,
+        "Despesas (R$)": r.expenses,
+        "Receita Líquida (R$)": r.netRevenue,
+      }))
+    );
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Receita");
+    XLSX.writeFile(wb, `relatorio_receita_${selectedPeriod}.xlsx`);
+  }
+
+  function exportUsersExcel() {
+    if (!data) return;
+    const ws = XLSX.utils.json_to_sheet(
+      data.userGrowth.map((u) => ({
+        Período: u.period,
+        "Total de Usuários": u.totalUsers,
+        "Novos Usuários": u.newUsers,
+        "Usuários Ativos": u.activeUsers,
+        "Usuários Inativos": u.inactiveUsers,
+        Bloqueados: u.blockedUsers,
+      }))
+    );
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Usuários");
+    XLSX.writeFile(wb, `relatorio_usuarios_${selectedPeriod}.xlsx`);
+  }
+
+  function exportSubscriptionsExcel() {
+    if (!data) return;
+    const ws = XLSX.utils.json_to_sheet(
+      data.revenueData.map((r) => ({
+        Mês: r.month,
+        "Novas Assinaturas": r.newSubscriptions,
+        Cancelamentos: r.cancellations,
+        "Churn (%)": r.churnRate,
+      }))
+    );
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Assinaturas");
+    XLSX.writeFile(wb, `relatorio_assinaturas_${selectedPeriod}.xlsx`);
+  }
+
   if (!user) {
     return (
       <div className="flex-1 p-6 flex items-center justify-center">
@@ -354,14 +451,14 @@ export default function AdminReports() {
 
   return (
     <div className="flex-1 p-4 md:p-6 space-y-6">
-      {/* Mock data warning banner */}
+      {/* Aviso de dado indisponível — nunca exibimos número fictício no lugar */}
       {data?.failedEndpoints && data.failedEndpoints.length > 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-                {data.failedEndpoints.length} endpoint{data.failedEndpoints.length > 1 ? "s" : ""} indisponível{data.failedEndpoints.length > 1 ? "is" : ""} — exibindo dados de demonstração
+                {data.failedEndpoints.length} indicador{data.failedEndpoints.length > 1 ? "es" : ""} indisponível{data.failedEndpoints.length > 1 ? "is" : ""} no momento — exibindo vazio/zerado em vez de dado incorreto
               </p>
               <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
                 Falhou: {data.failedEndpoints.join(", ")}
@@ -411,7 +508,7 @@ export default function AdminReports() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={exportAllReports} disabled={!data}>
             <Download className="h-4 w-4 mr-2" />
             Exportar
           </Button>
@@ -574,7 +671,7 @@ export default function AdminReports() {
         <TabsContent value="plans" className="space-y-4">
           <ChartContainer
             title="Distribuição de Planos"
-            description="Assinaturas por plano (Free, Pro, Business)"
+            description="Assinaturas por plano"
           >
             {data?.planDistribution && data.planDistribution.length > 0 ? (
               <PlansDistributionChart data={data.planDistribution} />
@@ -650,22 +747,22 @@ export default function AdminReports() {
         <CardHeader>
           <CardTitle className="text-base">Relatórios Rápidos</CardTitle>
           <CardDescription>
-            Baixe relatórios detalhados em PDF ou Excel
+            Baixe relatórios detalhados em Excel
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full" onClick={exportRevenueExcel} disabled={!data}>
               <FileText className="h-4 w-4 mr-2" />
-              Relatório de Receita (PDF)
+              Relatório de Receita (Excel)
             </Button>
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full" onClick={exportUsersExcel} disabled={!data}>
               <Table className="h-4 w-4 mr-2" />
               Relatório de Usuários (Excel)
             </Button>
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full" onClick={exportSubscriptionsExcel} disabled={!data}>
               <FileText className="h-4 w-4 mr-2" />
-              Relatório de Assinaturas (PDF)
+              Relatório de Assinaturas (Excel)
             </Button>
           </div>
         </CardContent>

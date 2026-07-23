@@ -13,6 +13,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { storageKey as tutorialStorageKey } from "@/components/user/UserTutorial";
 
+const SUPPORT_EMAIL = "contato@doutorcash.com";
+
 const FAQ_ITEMS = [
   {
     question: "Como funciona o DoutorCash?",
@@ -46,8 +48,8 @@ const SUPPORT_CHANNELS = [
     icon: Mail,
     title: "E-mail",
     description: "Resposta em até 24 horas",
-    value: "suporte@doutorcashapp.com.br",
-    action: "mailto:suporte@doutorcashapp.com.br",
+    value: SUPPORT_EMAIL,
+    action: `mailto:${SUPPORT_EMAIL}`,
     color: "bg-blue-500/10",
     iconColor: "text-blue-500"
   },
@@ -80,15 +82,17 @@ export default function Support() {
     }
 
     setIsSubmitting(true);
-    // Simular envio (no futuro, integrar com API real)
-    setTimeout(() => {
-      toast.success("Mensagem enviada com sucesso! Retornaremos em breve.");
-      setName("");
-      setEmail("");
-      setSubject("");
-      setMessage("");
-      setIsSubmitting(false);
-    }, 1500);
+    const mailSubject = encodeURIComponent(subject || `Contato via painel — ${name}`);
+    const mailBody = encodeURIComponent(
+      `Nome: ${name}\nE-mail: ${email}\n\nMensagem:\n${message}`
+    );
+    window.open(`mailto:${SUPPORT_EMAIL}?subject=${mailSubject}&body=${mailBody}`);
+    toast.success("Seu app de e-mail foi aberto. Envie a mensagem para concluir o contato.");
+    setName("");
+    setEmail("");
+    setSubject("");
+    setMessage("");
+    setIsSubmitting(false);
   };
 
   const openTutorial = () => {

@@ -21,6 +21,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/components/ui/theme-provider";
 import { useNavigate } from "react-router-dom";
 
+const SUPPORT_EMAIL = "contato@doutorcash.com";
+
 const PLAN_CONFIG = {
   free: { label: "Gratuito", color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300", icon: null },
   pro: { label: "Pro", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300", icon: <Zap className="w-3 h-3" /> },
@@ -363,7 +365,7 @@ const SettingsPage = memo(() => {
               onClick={(e) => {
                 e.preventDefault();
                 setIsSendingCancelEmail(true);
-                const recipient = import.meta.env.VITE_CANCELLATION_EMAIL as string;
+                const recipient = (import.meta.env.VITE_CANCELLATION_EMAIL as string) || SUPPORT_EMAIL;
                 const subject = encodeURIComponent(`Cancelamento de Assinatura Pro - ${user?.name}`);
                 const body = encodeURIComponent(
                   `Olá,\n\nSolicito o cancelamento da minha assinatura Pro e o estorno do valor pago.\n\n` +
@@ -400,7 +402,17 @@ const SettingsPage = memo(() => {
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700 text-white"
               onClick={() => {
-                toast.info("Solicitação de exclusão registrada. Em breve você receberá um email de confirmação.");
+                const subject = encodeURIComponent(`Exclusão de Conta - ${user?.name}`);
+                const body = encodeURIComponent(
+                  `Olá,\n\nSolicito a exclusão permanente da minha conta e de todos os meus dados, conforme a LGPD.\n\n` +
+                  `Nome: ${user?.name ?? "—"}\n` +
+                  `Email: ${user?.email ?? "—"}\n` +
+                  `Telefone: ${user?.phone ?? "—"}\n` +
+                  `ID da conta: ${user?.id ?? "—"}\n\n` +
+                  `Data da solicitação: ${new Date().toLocaleString("pt-BR")}\n\nAtenciosamente,\n${user?.name}`
+                );
+                window.open(`mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`);
+                toast.success("Email de solicitação de exclusão aberto. Envie para concluir o pedido.");
                 setShowDeleteDialog(false);
               }}
             >

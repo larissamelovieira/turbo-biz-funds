@@ -1,5 +1,5 @@
 import { memo, useState, useEffect, useRef } from "react";
-import { Target, Plus, Trophy, TrendingUp, Trash2, Loader2, Pencil } from "lucide-react";
+import { Target, Plus, Trophy, TrendingUp, Trash2, Loader2, Pencil, History } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,9 +18,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useGoals, useCreateGoal, useDeleteGoal, useUpdateGoal } from "@/features/goals/hooks/use-goals";
+import { useGoalHistory, useAddGoalHistory } from "@/features/goals/hooks/use-goal-history";
 import { useCategories } from "@/features/categories/hooks/use-categories";
 import { useCreateTransaction } from "@/features/transactions/hooks/use-transactions";
 import { api, apiEndpoints } from "@/lib/api/client";
@@ -88,6 +95,10 @@ const GoalsPage = memo(() => {
   const [editGoal, setEditGoal] = useState<{ id: string; name: string; current: number; target: number; category: string } | null>(null);
   const [editCurrentValue, setEditCurrentValue] = useState("");
   const [isAddingContribution, setIsAddingContribution] = useState(false);
+  const [historyGoal, setHistoryGoal] = useState<{ id: string; name: string; current: number; target: number } | null>(null);
+  const historyGoalId = historyGoal ? historyGoal.id : null;
+  const { data: goalHistoryEntries = [], isLoading: isGoalHistoryLoading } = useGoalHistory(historyGoalId);
+  const addGoalHistory = useAddGoalHistory(editGoal ? editGoal.id : null);
   const [form, setForm] = useState({
     name: "",
     target: "",
@@ -199,6 +210,12 @@ const GoalsPage = memo(() => {
         occurredAt: new Date().toISOString(),
       });
       await updateGoal.mutateAsync({ id: editGoal.id, current: newCurrent });
+      addGoalHistory.mutate({
+        amount: clampedContribution,
+        description: `Aporte: ${editGoal.name}`,
+        currentBefore: editGoal.current,
+        currentAfter: newCurrent,
+      });
 
       if (newCurrent >= editGoal.target) {
         toast.success(`🎉 Meta "${editGoal.name}" concluída!`);
@@ -324,6 +341,15 @@ const GoalsPage = memo(() => {
                       <Button
                         variant="ghost"
                         size="icon"
+                        aria-label={`Histórico de ${goal.name}`}
+                        className="h-7 w-7 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                        onClick={() => setHistoryGoal({ id: String(goal.id), name: goal.name, current: goal.current, target: goal.target })}
+                      >
+                        <History className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         aria-label={`Atualizar progresso de ${goal.name}`}
                         className="h-7 w-7 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary hover:bg-primary/10"
                         onClick={() => {
@@ -379,6 +405,70 @@ const GoalsPage = memo(() => {
           })}
         </div>
       )}
+
+      {/* Sheet — Histórico */}
+      <Sheet open={!!historyGoal} onOpenChange={(open) => { if (!open) setHistoryGoal(null); }}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader className="mb-6">
+            <SheetTitle className="flex items-center gap-2">
+              <History className="w-5 h-5" />
+              Histórico — {historyGoal?.name}
+            </SheetTitle>
+          </SheetHeader>
+
+          {historyGoal && (
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="text-center p-3 rounded-lg bg-muted/40">
+                <p className="text-xs text-muted-foreground mb-1">Economizado</p>
+                <p className="text-sm font-semibold text-primary">{fmtBRL(historyGoal.current)}</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-muted/40">
+                <p className="text-xs text-muted-foreground mb-1">Meta</p>
+                <p className="text-sm font-semibold">{fmtBRL(historyGoal.target)}</p>
+              </div>
+            </div>
+          )}
+
+          {isGoalHistoryLoading ? (
+            <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-sm">Carregando histórico...</span>
+            </div>
+          ) : goalHistoryEntries.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+              <History className="w-12 h-12 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">Nenhum aporte registrado ainda.</p>
+              <p className="text-xs text-muted-foreground/60">Use o lápis pra adicionar valor à meta.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {goalHistoryEntries.map((entry) => (
+                <div key={entry.id} className="flex items-start gap-3 p-3 rounded-lg border border-border bg-muted/20">
+                  <div className="mt-0.5 shrink-0 text-primary">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium truncate">{entry.description}</p>
+                      <p className="text-sm font-semibold shrink-0 text-primary">
+                        +{fmtBRL(entry.amount)}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(entry.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {fmtBRL(entry.currentBefore)} → {fmtBRL(entry.currentAfter)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {/* Modal atualizar progresso */}
       <Dialog open={!!editGoal} onOpenChange={(open) => { if (!open) { setEditGoal(null); setEditCurrentValue(""); } }}>

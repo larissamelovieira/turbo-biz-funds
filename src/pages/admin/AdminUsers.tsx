@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react";
+import * as XLSX from "xlsx";
 import {
   Search, MoreHorizontal, Mail, Shield, Ban, Trash2,
   ChevronLeft, ChevronRight, Users, X, AlertCircle,
   CheckCircle, UserCheck, Phone, Calendar, Activity,
-  CreditCard, Crown, Zap,
+  CreditCard, Crown, Zap, Download,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -638,6 +639,23 @@ export default function AdminUsers() {
 
   const hasActiveFilters = searchTerm || selectedPlan !== "all" || selectedStatus !== "all";
 
+  const exportClients = () => {
+    const rows = filteredUsers.map((u) => ({
+      Nome: u.name,
+      "E-mail": u.email,
+      CPF: u.cpf || "",
+      Telefone: u.phone || "",
+      Plano: u.plan,
+      Status: u.status,
+      "Data de Cadastro": u.createdAt ? new Date(u.createdAt).toLocaleDateString("pt-BR") : "",
+      "Último Acesso": u.lastLogin ? new Date(u.lastLogin).toLocaleDateString("pt-BR") : "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Clientes");
+    XLSX.writeFile(wb, `clientes_doutorcash_${new Date().toISOString().split("T")[0]}.xlsx`);
+  };
+
   const openDetail = (user: AdminUser) => {
     setSelectedUser(user);
     setSheetOpen(true);
@@ -748,6 +766,10 @@ export default function AdminUsers() {
                       <X className="h-4 w-4" />
                     </Button>
                   )}
+                  <Button variant="outline" onClick={exportClients} disabled={filteredUsers.length === 0} className="gap-2">
+                    <Download className="h-4 w-4" />
+                    Exportar
+                  </Button>
                 </div>
               </CardContent>
             </Card>

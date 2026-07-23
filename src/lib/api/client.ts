@@ -202,6 +202,8 @@ export const apiEndpoints = {
     create: "/v1/goals",
     update: (id: string) => `/v1/goals/${id}`,
     delete: (id: string) => `/v1/goals/${id}`,
+    history: (id: string) => `/v1/goals/${id}/history`,
+    addHistory: (id: string) => `/v1/goals/${id}/history`,
   },
   cards: {
     list: "/v1/cards",

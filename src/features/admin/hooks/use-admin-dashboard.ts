@@ -16,6 +16,7 @@ export interface AdminStat {
   icon: typeof DollarSign;
   color: string;
   bgColor: string;
+  warning?: string;
 }
 
 export interface AdminRevenuePoint {
@@ -72,11 +73,13 @@ const PLAN_COLORS = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444"];
 interface ApiAdminPlanSummary { id: string; name: string; subscribers: number }
 
 async function fetchAdminDashboard(): Promise<AdminDashboardData> {
-  const [statsRes, plansRes, usersRes, subscriptionsRes] = await Promise.allSettled([
+  const currentYear = new Date().getFullYear();
+  const [statsRes, plansRes, usersRes, subscriptionsRes, revenueChartRes] = await Promise.allSettled([
       api.get<any>(apiEndpoints.admin.stats),
       api.get<{ data: ApiAdminPlanSummary[] } | ApiAdminPlanSummary[]>(apiEndpoints.admin.plans),
       api.get<{ data: any[] } | any[]>(`${apiEndpoints.admin.users}?limit=5`),
       api.get<{ data: any[] } | any[]>(apiEndpoints.admin.subscriptions),
+      api.get<{ data: any[] } | any[]>(`${apiEndpoints.admin.revenueChart}?year=${currentYear}`),
     ]);
 
     // Helper para extrair dados de uma resposta (pode vir { data: {...} } ou {... })
@@ -115,7 +118,7 @@ async function fetchAdminDashboard(): Promise<AdminDashboardData> {
 
     const stats: AdminStat[] = [
       {
-        title: "Receita Mensal (MRR)",
+        title: "Receita Mensal",
         value: mrrDisplay,
         change: `${s.revenueGrowth ?? s.mrrChange ?? 0}%`,
         trend: (s.revenueGrowth ?? 0) >= 0 ? "up" : "down",
@@ -149,20 +152,38 @@ async function fetchAdminDashboard(): Promise<AdminDashboardData> {
         icon: TrendingUp,
         color: "text-warning",
         bgColor: "bg-warning/10",
+        warning: typeof convRate === "number" && convRate > 100
+          ? "Valor acima de 100% — matematicamente inconsistente. Cálculo precisa ser revisado no backend."
+          : undefined,
       },
     ];
 
-    // MRR real dos planos
-    const totalMRR = plans.reduce((sum: number, plan: any) => sum + (plan.mrr || 0), 0);
-    const totalSubscribers = plans.reduce((sum: number, plan: any) => sum + (plan.subscribers || 0), 0);
+    // Evolução mensal real, vinda de /v1/admin/revenue/chart. Sem dado real
+    // disponível, o gráfico fica vazio em vez de simular números — apresentar
+    // dado fictício como se fosse histórico real induz o admin a erro.
+    const revenueChartRaw = extractData<any>(revenueChartRes);
+    const revenueChartBody = revenueChartRaw?.data ?? revenueChartRaw ?? null;
 
-    // 6 meses simulados baseados no MRR real atual
-    const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"];
-    const receitaData: AdminRevenuePoint[] = meses.map((month, i) => ({
-      month,
-      receita: Math.round(totalMRR * (0.7 + i * 0.06) * 100) / 100,
-      clientes: Math.max(1, Math.round(totalSubscribers * (0.7 + i * 0.06))),
-    }));
+    let receitaData: AdminRevenuePoint[] = [];
+    if (revenueChartBody && Array.isArray(revenueChartBody.labels) && revenueChartBody.datasets) {
+      // Formato Chart.js: { labels: string[], datasets: { revenue: number[], users: number[], ... } }
+      const ds = revenueChartBody.datasets;
+      const revenueArr: number[] = ds.revenue ?? ds.receita ?? ds.mrr ?? [];
+      const usersArr: number[] = ds.users ?? ds.clientes ?? ds.subscribers ?? ds.activeUsers ?? [];
+      receitaData = (revenueChartBody.labels as string[]).map((month, i) => ({
+        month,
+        receita: Number(revenueArr[i] ?? 0),
+        clientes: Number(usersArr[i] ?? 0),
+      }));
+    } else if (Array.isArray(revenueChartBody)) {
+      receitaData = revenueChartBody
+        .map((p: any) => ({
+          month: p.month ?? p.label ?? p.period ?? "",
+          receita: Number(p.revenue ?? p.receita ?? p.mrr ?? p.value ?? 0),
+          clientes: Number(p.users ?? p.clientes ?? p.subscribers ?? p.activeUsers ?? 0),
+        }))
+        .filter((p) => p.month);
+    }
 
     // Processa clientes recentes da API
     const usersData = extractData<{ data: any[] } | any[]>(usersRes);
@@ -189,8 +210,8 @@ async function fetchAdminDashboard(): Promise<AdminDashboardData> {
     }));
 
     const partialErrors: Record<string, string> = {};
-    const endpointLabels = ["Stats", "Planos", "Usuários", "Assinaturas"];
-    [statsRes, plansRes, usersRes, subscriptionsRes].forEach((result, i) => {
+    const endpointLabels = ["Stats", "Planos", "Usuários", "Assinaturas", "Evolução da Receita"];
+    [statsRes, plansRes, usersRes, subscriptionsRes, revenueChartRes].forEach((result, i) => {
       if (result.status === "rejected") {
         const err = result.reason;
         partialErrors[endpointLabels[i]] = err?.response?.data?.message ?? err?.message ?? String(err);

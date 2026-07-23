@@ -187,7 +187,7 @@ function RevenueChartCard({ revenueData }: { revenueData: { month: string; recei
             </div>
             <span className="text-[15px] font-bold text-gray-900">Evolução da Receita e Usuários</span>
           </div>
-          <p className="text-xs text-gray-400 ml-9">MRR e usuários ativos dos últimos 6 meses</p>
+          <p className="text-xs text-gray-400 ml-9">Receita e usuários ativos por mês</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
@@ -217,6 +217,12 @@ function RevenueChartCard({ revenueData }: { revenueData: { month: string; recei
         </div>
       </div>
       <div className="px-2 pb-4">
+        {revenueData.length === 0 ? (
+          <div className="h-[240px] flex flex-col items-center justify-center gap-2 text-gray-400">
+            <TrendingUp className="h-8 w-8 opacity-30" />
+            <p className="text-sm">Sem histórico de receita disponível ainda</p>
+          </div>
+        ) : (
         <ResponsiveContainer width="100%" height={240}>
           <LineChart data={revenueData} margin={{ top: 8, right: 16, left: -16, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
@@ -274,6 +280,7 @@ function RevenueChartCard({ revenueData }: { revenueData: { month: string; recei
             )}
           </LineChart>
         </ResponsiveContainer>
+        )}
       </div>
     </div>
   );
@@ -377,7 +384,20 @@ const AdminStatCard = memo(function AdminStatCard({ stat }: { stat: AdminStat })
           <Icon className={cn("h-4 w-4", stat.color)} />
         </div>
       </div>
-      <p className="text-2xl font-bold text-white leading-none tracking-tight">{stat.value}</p>
+      <div className="flex items-center gap-1.5">
+        <p className="text-2xl font-bold text-white leading-none tracking-tight">{stat.value}</p>
+        {stat.warning && (
+          <AlertTriangle
+            className="h-4 w-4 text-amber-400 shrink-0"
+            aria-label={stat.warning}
+          >
+            <title>{stat.warning}</title>
+          </AlertTriangle>
+        )}
+      </div>
+      {stat.warning && (
+        <p className="text-[11px] text-amber-300 leading-tight -mt-2">{stat.warning}</p>
+      )}
       <div className="flex items-center gap-1">
         {stat.trend === "up" ? (
           <ArrowUpRight className="h-3.5 w-3.5 text-green-400 shrink-0" />
