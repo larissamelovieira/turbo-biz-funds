@@ -37,6 +37,12 @@ export function useCardExpenses() {
     const history = results[i]?.data ?? [];
     return history
       .filter((h) => h.type === "expense")
+      // Compra parcelada debita o limite do cartão pelo valor TOTAL de uma
+      // vez (card_history), mas o gasto de caixa real já é coberto pela
+      // recorrência mensal criada junto (cada parcela). isInstallment=true
+      // marca esse débito de limite — excluímos daqui pra não somar os dois
+      // em Despesas (campo adicionado no backend em 23/07/2026).
+      .filter((h) => !h.isInstallment)
       .map((h) => ({
         id: `card-history-${h.id}`,
         cardId,
