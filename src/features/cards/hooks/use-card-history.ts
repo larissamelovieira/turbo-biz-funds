@@ -10,12 +10,6 @@ export interface CardHistoryEntry {
   usedBefore: number;
   usedAfter: number;
   createdAt: string;
-  // Compra parcelada debita o limite todo de uma vez aqui, mas o gasto de
-  // caixa real fica coberto pela recorrência (recurringId aponta pra ela).
-  // Sem isso não dava pra saber, na exibição de Despesas, que esse valor já
-  // está contado na parcela mensal — contava os dois juntos.
-  isInstallment?: boolean;
-  recurringId?: string | null;
 }
 
 export interface AddHistoryPayload {
@@ -44,21 +38,11 @@ function lsAdd(cardId: string, entry: CardHistoryEntry) {
 
 // ---------- fetch with API-first, localStorage fallback ----------
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalizeEntry(raw: any): CardHistoryEntry {
-  return {
-    ...raw,
-    isInstallment: raw.isInstallment ?? raw.is_installment ?? false,
-    recurringId: raw.recurringId ?? raw.recurring_id ?? null,
-  };
-}
-
 export async function fetchHistory(cardId: string): Promise<CardHistoryEntry[]> {
   try {
     const res = await api.get<{ data: CardHistoryEntry[] } | CardHistoryEntry[]>(apiEndpoints.cards.history(cardId));
-    const raw = Array.isArray(res) ? res : ((res as { data: CardHistoryEntry[] }).data ?? []);
-    const remote = raw.map(normalizeEntry);
-    if (remote.length > 0) {
+    const remote = Array.isArray(res) ? res : ((res as { data: CardHistoryEntry[] }).data ?? []);
+    if (Array.isArray(remote) && remote.length > 0) {
       lsSave(cardId, remote);
       return remote;
     }
