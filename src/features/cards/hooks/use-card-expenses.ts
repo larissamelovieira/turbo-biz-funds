@@ -41,8 +41,10 @@ export function useCardExpenses() {
       // vez (card_history), mas o gasto de caixa real já é coberto pela
       // recorrência mensal criada junto (cada parcela). isInstallment=true
       // marca esse débito de limite — excluímos daqui pra não somar os dois
-      // em Despesas (campo adicionado no backend em 23/07/2026).
-      .filter((h) => !h.isInstallment)
+      // em Despesas (campo adicionado no backend em 23/07/2026). Backend nem
+      // sempre preenche o campo, então também casa pela descrição padrão
+      // "... Compra parcelada em Nx" como rede de segurança.
+      .filter((h) => !h.isInstallment && !/compra parcelada em \d+x/i.test(h.description ?? ""))
       .map((h) => ({
         id: `card-history-${h.id}`,
         cardId,
