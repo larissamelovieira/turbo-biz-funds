@@ -53,10 +53,11 @@ function AnalyticsTracker() {
 
 function RouteErrorBoundary({ children }: { children: React.ReactNode }) {
   const location = useLocation();
-  // Remonta o boundary a cada troca de rota — sem isso, um erro capturado
-  // numa tela fica preso mostrando "Ops!" até o usuário dar F5, mesmo
-  // clicando em outro item do menu.
-  return <ErrorBoundary key={location.pathname}>{children}</ErrorBoundary>;
+  // resetKey (não key!) — limpa o erro capturado ao trocar de rota sem
+  // remontar a árvore inteira em toda navegação normal. Usar `key` aqui
+  // derrubava e recriava tudo abaixo (ex: UserLayout) a cada mudança de
+  // pathname, resetando estado local como o passo do tutorial de onboarding.
+  return <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>;
 }
 
 const App = () => {

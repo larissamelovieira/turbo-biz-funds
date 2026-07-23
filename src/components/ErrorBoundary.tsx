@@ -4,6 +4,11 @@ import { Button } from "@/components/ui/button";
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  // Valor observado (ex: pathname) pra limpar o erro sozinho ao trocar de
+  // tela. Ao contrário de usar `key`, isso só reseta quando há erro —
+  // não remonta a árvore inteira (e o estado dela, ex: tutorial) em toda
+  // navegação normal, sem erro nenhum.
+  resetKey?: string;
 }
 
 interface State {
@@ -21,6 +26,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(_error: Error, _errorInfo: ErrorInfo) {
+  }
+
+  public componentDidUpdate(prevProps: Props) {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.handleReset();
+    }
   }
 
   private handleReset = () => {

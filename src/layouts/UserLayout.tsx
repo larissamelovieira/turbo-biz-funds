@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { UserSidebarContent, MobileSidebarTrigger } from "@/components/user/UserSidebar";
@@ -110,7 +111,17 @@ export default function UserLayout() {
 
           {/* Card principal com scroll */}
           <div className="flex-1 min-h-0 overflow-auto rounded-2xl bg-[#f4f6fb]">
-            <Outlet />
+            {/* Suspense próprio: evita que o lazy-load de uma página filha
+                (ex: primeira visita a Transações) suba até o Suspense global
+                em AppShell e remonte este layout inteiro — o que reseta o
+                tutorial pro passo 0 no meio da navegação entre passos. */}
+            <Suspense fallback={
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+              </div>
+            }>
+              <Outlet />
+            </Suspense>
           </div>
         </div>
       </div>
