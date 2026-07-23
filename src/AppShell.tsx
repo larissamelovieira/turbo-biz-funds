@@ -17,6 +17,9 @@ const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const Pagamento = lazyWithRetry(() => import("./pages/Pagamento"));
 const PagamentoSucesso = lazyWithRetry(() => import("./pages/PagamentoSucesso"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
+const TermosDeUso = lazyWithRetry(() => import("./pages/legal/TermosDeUso"));
+const PoliticaDePrivacidade = lazyWithRetry(() => import("./pages/legal/PoliticaDePrivacidade"));
+const Lgpd = lazyWithRetry(() => import("./pages/legal/Lgpd"));
 const UserDashboard = lazyWithRetry(() => import("./pages/UserDashboard"));
 const NotificationsPage = lazyWithRetry(() => import("./pages/Notifications"));
 const SupportPage = lazyWithRetry(() => import("./pages/Support"));
@@ -167,6 +170,9 @@ function AppRoutes() {
           </PublicRoute>
         } />
         <Route path="/cadastro" element={<Cadastro />} />
+        <Route path="/termos-de-uso" element={<TermosDeUso />} />
+        <Route path="/politica-de-privacidade" element={<PoliticaDePrivacidade />} />
+        <Route path="/lgpd" element={<Lgpd />} />
         <Route path="/recuperar-senha" element={
           <PublicRoute>
             <ForgotPassword />

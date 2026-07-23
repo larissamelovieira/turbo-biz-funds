@@ -748,9 +748,9 @@ const Cadastro = () => {
 
         <p className="text-center text-xs text-white/40 mt-4">
           Ao criar uma conta, você concorda com nossos{" "}
-          <a href="#" className="text-[#E5E7EB] hover:underline">Termos de Uso</a>
+          <Link to="/termos-de-uso" target="_blank" className="text-[#E5E7EB] hover:underline">Termos de Uso</Link>
           {" "}e{" "}
-          <a href="#" className="text-[#E5E7EB] hover:underline">Política de Privacidade</a>
+          <Link to="/politica-de-privacidade" target="_blank" className="text-[#E5E7EB] hover:underline">Política de Privacidade</Link>
         </p>
       </div>
     </div>
