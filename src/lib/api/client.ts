@@ -60,12 +60,27 @@ function extractApiError(error: AxiosError): ApiError {
       : undefined);
 
   // ── Extrai field-level errors (validação) ─────────────────────────────────
-  const errors: Record<string, string[]> | string[] | undefined =
+  // Formatos suportados:
+  // { errors: { field: [msgs] } }
+  // { errors: ["msg1", "msg2"] }
+  // { details: [{ field, messages: [msgs] }] }  (formato atual do backend)
+  let errors: Record<string, string[]> | string[] | undefined =
     !Array.isArray(data.errors) && typeof data.errors === "object" && data.errors !== null
       ? (data.errors as Record<string, string[]>)
       : Array.isArray(data.errors)
       ? (data.errors as string[])
       : undefined;
+
+  if (!errors && Array.isArray(data.details)) {
+    const byField: Record<string, string[]> = {};
+    for (const entry of data.details as unknown[]) {
+      if (entry && typeof entry === "object" && "field" in entry) {
+        const e = entry as { field: string; messages?: string[]; message?: string };
+        byField[e.field] = e.messages ?? (e.message ? [e.message] : []);
+      }
+    }
+    if (Object.keys(byField).length > 0) errors = byField;
+  }
 
   return { message, status, code, errors, details: data };
 }

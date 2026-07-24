@@ -519,7 +519,7 @@ export default function AdminReports() {
       {formattedStats && data?.stats && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <StatCard
-            title="Receita Mensal"
+            title="Receita Total"
             value={formattedStats.revenue}
             change={data.stats.revenueChange}
             trend={data.stats.revenueTrend}
@@ -702,7 +702,7 @@ export default function AdminReports() {
                       <div className="text-right">
                         <p className="font-bold">{plan.percentage}%</p>
                         <p className="text-xs text-muted-foreground">
-                          {plan.revenue > 0 ? `R$ ${plan.revenue.toLocaleString("pt-BR")}/mês` : "Grátis"}
+                          {plan.revenue > 0 ? `R$ ${plan.revenue.toLocaleString("pt-BR")}` : "Grátis"}
                         </p>
                       </div>
                     </div>

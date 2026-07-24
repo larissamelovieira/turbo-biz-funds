@@ -125,9 +125,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(async (payload: RegisterPayload): Promise<void> => {
-    // cpf removido do payload até backend implementar o campo (evita 422)
-    const { cpf: _cpf, ...apiPayload } = payload;
-    const response = await publicApi.post<RegisterApiResponse>(apiEndpoints.auth.register, apiPayload);
+    type ApiErr = { status?: number; errors?: Record<string, string[]> | string[]; message?: string };
+
+    let response: RegisterApiResponse;
+    try {
+      // Tenta enviar com CPF — backend pode já aceitar o campo
+      response = await publicApi.post<RegisterApiResponse>(apiEndpoints.auth.register, payload);
+    } catch (err: unknown) {
+      const apiErr = err as ApiErr;
+      const cpfRejected =
+        apiErr?.status === 422 &&
+        payload.cpf &&
+        (
+          (!Array.isArray(apiErr.errors) && apiErr.errors && "cpf" in apiErr.errors) ||
+          (apiErr.message ?? "").toLowerCase().includes("cpf")
+        );
+      if (!cpfRejected) throw err;
+      // Backend ainda rejeita o campo cpf — repete sem ele pra não travar o cadastro
+      const { cpf: _cpf, ...apiPayload } = payload;
+      response = await publicApi.post<RegisterApiResponse>(apiEndpoints.auth.register, apiPayload);
+    }
     // API pode retornar token no nível raiz ou aninhado em `data`
     const raw = response as unknown as Record<string, unknown>;
     const nested = (raw.data ?? {}) as Record<string, unknown>;

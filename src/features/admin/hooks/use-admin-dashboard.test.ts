@@ -97,7 +97,7 @@ describe("useAdminDashboard", () => {
     const { result } = renderHook(() => useAdminDashboard(), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.data?.stats).toBeDefined());
     const revenueStat = result.current.data!.stats[0];
-    expect(revenueStat.title).toBe("Receita Mensal");
+    expect(revenueStat.title).toBe("Receita Total");
     expect(revenueStat.value).toContain("15");
     expect(revenueStat.trend).toBe("up");
   });

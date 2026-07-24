@@ -125,7 +125,7 @@ const Pricing = memo(() => {
             {/* CTA */}
             <Link
               to="/cadastro"
-              state={{ billing: "annual" }}
+              state={{ plan: "pro" }}
               onClick={() => analytics.click("pricing_pro_annual", "pricing")}
               className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl text-white font-bold text-lg transition-all duration-200 active:scale-[0.98]"
               style={{

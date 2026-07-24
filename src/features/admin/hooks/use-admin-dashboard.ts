@@ -118,7 +118,7 @@ async function fetchAdminDashboard(): Promise<AdminDashboardData> {
 
     const stats: AdminStat[] = [
       {
-        title: "Receita Mensal",
+        title: "Receita Total",
         value: mrrDisplay,
         change: `${s.revenueGrowth ?? s.mrrChange ?? 0}%`,
         trend: (s.revenueGrowth ?? 0) >= 0 ? "up" : "down",

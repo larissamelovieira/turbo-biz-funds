@@ -251,7 +251,7 @@ function RevenueChartCard({ revenueData }: { revenueData: { month: string; recei
             <Tooltip
               contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "10px", fontSize: 12, padding: "8px 12px" }}
               formatter={(value: number, name: string) => {
-                if (name === "receita") return [`R$ ${value.toLocaleString("pt-BR")}`, "Receita (MRR)"];
+                if (name === "receita") return [`R$ ${value.toLocaleString("pt-BR")}`, "Receita"];
                 return [`${value}`, "Usuários ativos"];
               }}
             />

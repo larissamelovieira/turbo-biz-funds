@@ -80,6 +80,10 @@ interface FormErrors {
   confirmPassword?: string;
 }
 
+// Backend ainda rejeita o campo cpf no cadastro ("property cpf should not exist").
+// Reativar (true) assim que o backend passar a aceitar o campo.
+const CPF_FIELD_ENABLED = false;
+
 const CRITERIA = [
   { id: "len",     label: "Mínimo 8 caracteres",       badge: "8+", test: (p: string) => p.length >= 8 },
   { id: "upper",   label: "Letra maiúscula (A-Z)",      badge: "A",  test: (p: string) => /[A-Z]/.test(p) },
@@ -465,6 +469,7 @@ const Cadastro = () => {
                   )}
                 </div>
 
+                {CPF_FIELD_ENABLED && (
                 <div className="space-y-2">
                   <Label htmlFor="cpf" className="text-sm font-medium text-white/80">
                     CPF <span className="text-white/40 font-normal">(opcional)</span>
@@ -501,6 +506,7 @@ const Cadastro = () => {
                     </p>
                   )}
                 </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="birthDate" className="text-sm font-medium text-white/80">
