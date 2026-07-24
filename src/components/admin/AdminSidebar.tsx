@@ -111,7 +111,7 @@ function AdminFooter({ onLogout, user }: { onLogout: () => void; user: { name?: 
           {initials}
         </AvatarFallback>
       </Avatar>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 max-w-[120px]">
         <p className="text-white text-sm font-semibold truncate leading-tight">
           {user?.name || "Admin"}
         </p>
