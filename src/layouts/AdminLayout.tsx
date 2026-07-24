@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { AdminTutorial, useAdminTutorial } from "@/components/admin/AdminTutorial";
 import { AdminSidebarContent, AdminMobileTrigger } from "@/components/admin/AdminSidebar";
@@ -210,7 +211,16 @@ export default function AdminLayout() {
 
           {/* Card branco principal com scroll */}
           <div className="flex-1 min-h-0 overflow-auto rounded-2xl bg-white">
-            <Outlet />
+            {/* Suspense próprio: evita que o lazy-load de uma página filha
+                suba até o Suspense global em AppShell e remonte este layout
+                inteiro — o que resetaria o tutorial de admin pro passo 0. */}
+            <Suspense fallback={
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+              </div>
+            }>
+              <Outlet />
+            </Suspense>
           </div>
         </div>
       </div>
