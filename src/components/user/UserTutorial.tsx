@@ -566,12 +566,14 @@ export function UserTutorial({ onComplete, onSkip }: UserTutorialProps) {
 
       {/* Main card */}
       <div
-        className="relative z-10 w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col sm:flex-row"
+        className="relative z-10 w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-y-auto sm:overflow-hidden flex flex-col sm:flex-row"
         style={{ maxHeight: "90vh" }}
       >
-        {/* Left panel */}
+        {/* Left panel — só decorativo (mockup visual); some em telas pequenas
+            pra sobrar espaço pro conteúdo real e o rodapé com os botões,
+            que senão ficavam espremidos/inacessíveis em telas tipo iPhone SE. */}
         <div className={cn(
-          "relative sm:w-[42%] shrink-0 bg-gradient-to-br p-6 flex flex-col justify-between min-h-[200px] sm:min-h-0",
+          "relative sm:w-[42%] shrink-0 bg-gradient-to-br p-6 hidden sm:flex sm:flex-col justify-between sm:min-h-0",
           current.bgGradient
         )}>
           <div className="flex items-center gap-2">
