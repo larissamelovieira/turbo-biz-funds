@@ -161,6 +161,10 @@ const FALLBACK_PLAN: PublicPlan = {
   popular: true,
 };
 
+const PLAN_LABEL_CLEANUP: Record<string, { name: string; description?: string }> = {
+  "Para pequenas empresas": { name: "Acesso total ao Doutor Cash", description: undefined },
+};
+
 const Cadastro = () => {
   const [step, setStep] = useState(1);
   const location = useLocation();
@@ -711,6 +715,9 @@ const Cadastro = () => {
                     {plans.map((p) => {
                       const isSelected = p.id === formData.plan;
                       const hasCardOption = p.priceCard > p.pricePix;
+                      const label = PLAN_LABEL_CLEANUP[p.name] ?? PLAN_LABEL_CLEANUP[p.description] ?? {};
+                      const name = label.name ?? p.name;
+                      const desc = "description" in label ? label.description : p.description;
                       return (
                         <button
                           key={p.id}
@@ -725,7 +732,7 @@ const Cadastro = () => {
                         >
                           <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2">
-                              <p className="text-[15px] font-bold text-white">{p.name}</p>
+                              <p className="text-[15px] font-bold text-white">{name}</p>
                               {p.popular && (
                                 <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase text-[#E5E7EB]" style={{ background: "rgba(27,77,191,0.3)" }}>
                                   <Crown className="w-3 h-3" />
@@ -740,20 +747,24 @@ const Cadastro = () => {
                               {isSelected && <Check className="w-3 h-3 text-white" />}
                             </div>
                           </div>
-                          {p.description && <p className="text-xs text-white/50 mb-3">{p.description}</p>}
+                          {desc && <p className="text-xs text-white/50 mb-3">{desc}</p>}
 
+                          {hasCardOption && (
+                            <div className="flex items-baseline gap-1 mb-1">
+                              <span className="text-sm text-white/60">12x</span>
+                              <span className="text-3xl font-black text-white tracking-tight">
+                                R$ {(p.priceCard / 12).toFixed(2).replace(".", ",")}
+                              </span>
+                            </div>
+                          )}
+                          {hasCardOption && <p className="text-[10px] text-white/30 uppercase tracking-wide mb-0.5">ou</p>}
                           <div className="flex items-baseline gap-1">
-                            <QrCode className="w-3.5 h-3.5 text-[#E5E7EB]" />
-                            <span className="text-2xl font-black text-white">
+                            <QrCode className="w-3 h-3 text-white/30" />
+                            <span className="text-sm text-white/50">
                               R$ {p.pricePix.toFixed(2).replace(".", ",")}
                             </span>
-                            <span className="text-xs text-white/40">no PIX</span>
+                            <span className="text-xs text-white/30">no PIX</span>
                           </div>
-                          {hasCardOption && (
-                            <p className="text-xs text-white/50 mt-0.5">
-                              ou R$ {p.priceCard.toFixed(2).replace(".", ",")} no cartão
-                            </p>
-                          )}
                         </button>
                       );
                     })}

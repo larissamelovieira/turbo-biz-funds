@@ -30,7 +30,14 @@ function periodLabel(billingPeriod: string): string {
 
 const CARD_INSTALLMENTS = 12;
 
+const PLAN_LABEL_MAP: Record<string, { name: string; description?: string }> = {
+  "Para pequenas empresas": { name: "Acesso total ao Doutor Cash", description: undefined },
+};
+
 function PlanCard({ plan }: { plan: PublicPlan }) {
+  const label = PLAN_LABEL_MAP[plan.name] ?? PLAN_LABEL_MAP[plan.description] ?? {};
+  const displayName = label.name ?? plan.name;
+  const displayDescription = "description" in label ? label.description : plan.description;
   const hasCardOption = plan.priceCard > plan.pricePix;
   const { intPart, decPart } = formatPrice(
     hasCardOption ? plan.priceCard / CARD_INSTALLMENTS : plan.pricePix
@@ -58,11 +65,11 @@ function PlanCard({ plan }: { plan: PublicPlan }) {
       )}
 
       <div className="flex items-center justify-center gap-2 mb-1">
-        <p className="text-center text-lg font-bold text-white">{plan.name}</p>
+        <p className="text-center text-lg font-bold text-white">{displayName}</p>
         <BadgeCheck className="w-5 h-5 shrink-0" style={{ color: BRAND.light }} />
       </div>
-      {plan.description && (
-        <p className="text-center text-sm text-white/50 mb-4">{plan.description}</p>
+      {displayDescription && (
+        <p className="text-center text-sm text-white/50 mb-4">{displayDescription}</p>
       )}
 
       {/* Preço principal — parcelado no cartão sem juros */}
@@ -74,9 +81,14 @@ function PlanCard({ plan }: { plan: PublicPlan }) {
         {!hasCardOption && <span className="text-sm text-white/40 ml-1">{periodLabel(plan.billingPeriod)}</span>}
       </div>
       {hasCardOption && (
-        <p className="text-center text-sm text-white/50 mb-4">
-          sem juros no cartão · Valor total: R$ {plan.priceCard.toFixed(2).replace(".", ",")}
-        </p>
+        <>
+          <p className="text-center text-sm text-white/50 mb-4">
+            sem juros no cartão · Valor total: R$ {plan.priceCard.toFixed(2).replace(".", ",")}
+          </p>
+          <p className="text-center text-sm text-white/60 mb-4">
+            Acesso por 12 meses (1 ano)
+          </p>
+        </>
       )}
       {!hasCardOption && <div className="mb-4" />}
       {hasCardOption && (
