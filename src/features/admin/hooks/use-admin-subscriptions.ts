@@ -72,19 +72,6 @@ async function fetchAdminSubscriptions(): Promise<ApiAdminSubscriptionsResponse>
   const data: AdminSubscription[] = raw.map((s: any) => {
     const displayName = s.user?.name ?? s.userName ?? s.name ?? "N/A";
 
-    // Amount: tenta raíz → nested plan → nested payment → nested planDetails
-    const rawAmount =
-      s.amount ??
-      s.price ??
-      s.planPrice ??
-      s.plan?.price ??
-      s.plan?.amount ??
-      s.planDetails?.price ??
-      s.planDetails?.amount ??
-      s.payment?.amount ??
-      s.lastPayment?.amount ??
-      0;
-
     // PaymentMethod: tenta raíz → nested payment → nested lastPayment
     const rawMethod =
       s.paymentMethod ??
@@ -96,6 +83,23 @@ async function fetchAdminSubscriptions(): Promise<ApiAdminSubscriptionsResponse>
       s.lastPayment?.method ??
       s.lastPayment?.paymentMethod ??
       "";
+
+    const isPix = /pix/i.test(rawMethod);
+    // Plano agora tem pricePix/priceCard em vez de price único — escolhe pelo método
+    const planPriceByMethod = (p: any) => (p ? (isPix ? p.pricePix ?? p.price : p.priceCard ?? p.price) : undefined);
+
+    // Amount: tenta raíz → nested plan → nested payment → nested planDetails
+    const rawAmount =
+      s.amount ??
+      s.price ??
+      s.planPrice ??
+      planPriceByMethod(s.plan) ??
+      s.plan?.amount ??
+      planPriceByMethod(s.planDetails) ??
+      s.planDetails?.amount ??
+      s.payment?.amount ??
+      s.lastPayment?.amount ??
+      0;
 
     return {
       id: s.id ?? "",

@@ -10,7 +10,8 @@ const mockPlans = [
     id: "free",
     name: "Free",
     description: "Plano gratuito",
-    price: 0,
+    pricePix: 0,
+    priceCard: 0,
     billingPeriod: "monthly",
     subscribers: 85,
     mrr: 0,
@@ -24,7 +25,8 @@ const mockPlans = [
     id: "pro",
     name: "Pro",
     description: "Para profissionais",
-    price: 99.9,
+    pricePix: 99.9,
+    priceCard: 154.8,
     billingPeriod: "monthly",
     subscribers: 130,
     mrr: 12987,
@@ -90,7 +92,8 @@ describe("useAdminPlans", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     const pro = result.current.plans.find((p) => p.id === "pro");
     expect(pro).toBeDefined();
-    expect(pro!.price).toBe(99.9);
+    expect(pro!.pricePix).toBe(99.9);
+    expect(pro!.priceCard).toBe(154.8);
     expect(pro!.subscribers).toBe(130);
     expect(pro!.popular).toBe(true);
   });

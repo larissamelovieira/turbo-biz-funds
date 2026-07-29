@@ -2,7 +2,7 @@ import { memo, useState } from "react";
 import {
   User, Bell, Shield, Moon, Sun, CreditCard, Smartphone,
   ChevronRight, Download, Loader2, LogOut, Pencil, Check, X,
-  Crown, Zap, Phone,
+  Crown, Zap, Phone, Hash,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ const SettingsPage = memo(() => {
 
   // profile edit
   const [editingProfile, setEditingProfile] = useState(false);
-  const [profileForm, setProfileForm] = useState({ name: user?.name ?? "", phone: user?.phone ?? "" });
+  const [profileForm, setProfileForm] = useState({ name: user?.name ?? "", phone: user?.phone ?? "", cpf: user?.cpf ?? "" });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // password
@@ -60,18 +60,30 @@ const SettingsPage = memo(() => {
     }
     setIsSavingProfile(true);
     try {
-      await updateProfile({ name: profileForm.name.trim(), phone: profileForm.phone.trim() || undefined });
+      const cpfDigits = profileForm.cpf.replace(/\D/g, "");
+      await updateProfile({
+        name: profileForm.name.trim(),
+        phone: profileForm.phone.trim() || undefined,
+        cpf: cpfDigits ? cpfDigits : null,
+      });
       toast.success("Perfil atualizado!");
       setEditingProfile(false);
-    } catch {
-      toast.error("Não foi possível salvar. Tente novamente.");
+    } catch (err: unknown) {
+      const apiErr = err as { status?: number; message?: string };
+      if (apiErr?.status === 422) {
+        toast.error("CPF inválido. Verifique e tente novamente.");
+      } else if (apiErr?.status === 409) {
+        toast.error("Este CPF já está cadastrado em outra conta.");
+      } else {
+        toast.error("Não foi possível salvar. Tente novamente.");
+      }
     } finally {
       setIsSavingProfile(false);
     }
   };
 
   const handleCancelEdit = () => {
-    setProfileForm({ name: user?.name ?? "", phone: user?.phone ?? "" });
+    setProfileForm({ name: user?.name ?? "", phone: user?.phone ?? "", cpf: user?.cpf ?? "" });
     setEditingProfile(false);
   };
 
@@ -177,6 +189,25 @@ const SettingsPage = memo(() => {
                 </div>
               </div>
               <div className="space-y-1.5">
+                <Label className="text-sm">CPF <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                <div className="relative">
+                  <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    value={profileForm.cpf}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, "").slice(0, 11);
+                      let masked = raw;
+                      if (raw.length > 3) masked = `${raw.slice(0, 3)}.${raw.slice(3)}`;
+                      if (raw.length > 6) masked = `${raw.slice(0, 3)}.${raw.slice(3, 6)}.${raw.slice(6)}`;
+                      if (raw.length > 9) masked = `${raw.slice(0, 3)}.${raw.slice(3, 6)}.${raw.slice(6, 9)}-${raw.slice(9)}`;
+                      setProfileForm((p) => ({ ...p, cpf: masked }));
+                    }}
+                    placeholder="000.000.000-00"
+                    className="h-10 pl-10"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
                 <Label className="text-sm">Email</Label>
                 <Input value={user?.email ?? ""} disabled className="h-10 opacity-60" />
                 <p className="text-xs text-muted-foreground">O email não pode ser alterado</p>
@@ -197,6 +228,7 @@ const SettingsPage = memo(() => {
               <InfoField label="Nome" value={user?.name ?? "—"} />
               <InfoField label="Email" value={user?.email ?? "—"} />
               <InfoField label="Telefone" value={user?.phone ?? "Não informado"} />
+              <InfoField label="CPF" value={user?.cpf ?? "Não informado"} />
             </div>
           )}
         </CardContent>

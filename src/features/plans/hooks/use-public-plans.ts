@@ -5,7 +5,8 @@ export interface PublicPlan {
   id: string;
   name: string;
   description: string;
-  price: number;
+  pricePix: number;
+  priceCard: number;
   billingPeriod: string;
   features: string[];
   popular?: boolean;
@@ -25,7 +26,8 @@ async function fetchPublicPlans(): Promise<PublicPlan[]> {
     id: p.id,
     name: p.name,
     description: p.description ?? "",
-    price: p.price ?? 0,
+    pricePix: p.pricePix ?? 0,
+    priceCard: p.priceCard ?? 0,
     billingPeriod: p.billingPeriod ?? "mês",
     features: Array.isArray(p.features) 
       ? p.features.map((f: string | { name: string }) => 

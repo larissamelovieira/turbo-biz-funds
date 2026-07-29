@@ -27,6 +27,8 @@ const PLAN_DEFAULTS: Record<string, PlanInfo> = {
     id: "pro",
     name: "Pro",
     price: 99.9,
+    pricePix: 99.9,
+    priceCard: 99.9,
     period: "/mês",
     description: "Acesso completo mensal",
     features: PRO_FEATURES,
@@ -35,6 +37,8 @@ const PLAN_DEFAULTS: Record<string, PlanInfo> = {
     id: "pro-monthly",
     name: "Pro Mensal",
     price: 99.9,
+    pricePix: 99.9,
+    priceCard: 99.9,
     period: "/mês",
     description: "Acesso completo mensal",
     features: PRO_FEATURES,
@@ -43,6 +47,8 @@ const PLAN_DEFAULTS: Record<string, PlanInfo> = {
     id: "pro-annual",
     name: "Pro Anual",
     price: 154.8,
+    pricePix: 99.9,
+    priceCard: 154.8,
     period: "/ano",
     description: "Acesso completo anual — 12x de R$12,90 sem juros",
     features: PRO_FEATURES,
@@ -95,9 +101,19 @@ export function usePlanInfo(planId: string) {
   };
 }
 
+function billingPeriodToPeriod(billingPeriod?: string): string {
+  if (billingPeriod === "ano") return "/ano";
+  if (billingPeriod === "semestre") return "/semestre";
+  if (billingPeriod === "mês") return "/mês";
+  return "/mês";
+}
+
 function normalizePlan(plan: PlanInfo): PlanInfo {
   return {
     ...plan,
+    // API retorna billingPeriod ("ano"/"mês"/"semestre"), não period ("/ano") —
+    // sem isso o checkout não detecta plano anual e esconde o parcelamento.
+    period: plan.period ?? billingPeriodToPeriod(plan.billingPeriod),
     features: Array.isArray(plan.features)
       ? plan.features.map((f: string | { name: string }) =>
           typeof f === "string" ? f : f.name

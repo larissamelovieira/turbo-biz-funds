@@ -3,11 +3,12 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, Lock, User, Phone, ArrowRight, Check, Loader2, Zap, Eye, EyeOff, MessageCircle, BarChart3, CreditCard, Repeat2, Brain, Wallet, Hash, Crown, BadgePercent, TrendingUp, BadgeCheck, QrCode, CalendarDays } from "lucide-react";
+import { Mail, Lock, User, Phone, ArrowRight, Check, Loader2, Zap, Eye, EyeOff, MessageCircle, BarChart3, CreditCard, Repeat2, Brain, Wallet, Hash, Crown, QrCode, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { analytics } from "@/lib/analytics";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePublicPlans, type PublicPlan } from "@/features/plans/hooks/use-public-plans";
 const logoWeb = "/logoweb.png";
 
 function isOver18(dateStr: string): boolean {
@@ -80,10 +81,6 @@ interface FormErrors {
   confirmPassword?: string;
 }
 
-// Backend ainda rejeita o campo cpf no cadastro ("property cpf should not exist").
-// Reativar (true) assim que o backend passar a aceitar o campo.
-const CPF_FIELD_ENABLED = false;
-
 const CRITERIA = [
   { id: "len",     label: "Mínimo 8 caracteres",       badge: "8+", test: (p: string) => p.length >= 8 },
   { id: "upper",   label: "Letra maiúscula (A-Z)",      badge: "A",  test: (p: string) => /[A-Z]/.test(p) },
@@ -153,9 +150,25 @@ const PRO_FEATURES = [
   "Suporte prioritário",
 ];
 
+const FALLBACK_PLAN: PublicPlan = {
+  id: "pro-annual",
+  name: "Plano Pro Anual",
+  description: "Acesso completo ao Doutor Cash",
+  pricePix: 99.9,
+  priceCard: 154.8,
+  billingPeriod: "ano",
+  features: [],
+  popular: true,
+};
+
 const Cadastro = () => {
   const [step, setStep] = useState(1);
   const location = useLocation();
+  const preselectedPlan = (location.state as { plan?: string } | null)?.plan;
+
+  const { data: apiPlans, isLoading: isPlansLoading, isError: isPlansError } = usePublicPlans();
+  const plans: PublicPlan[] = apiPlans && apiPlans.length > 0 ? apiPlans : isPlansError ? [FALLBACK_PLAN] : [];
+
   const [formData, setFormData] = useState<RegisterFormData & { plan: string; cpf: string }>({
     name: "",
     phone: "",
@@ -164,8 +177,22 @@ const Cadastro = () => {
     email: "",
     password: "",
     confirmPassword: "",
-    plan: "pro-annual",
+    plan: preselectedPlan ?? "",
   });
+
+  // Assim que os planos reais chegam, seleciona o pré-selecionado (vindo da landing),
+  // ou o marcado como popular, ou o primeiro da lista.
+  useEffect(() => {
+    if (formData.plan || plans.length === 0) return;
+    const match =
+      plans.find((p) => p.id === preselectedPlan) ??
+      plans.find((p) => p.popular) ??
+      plans[0];
+    setFormData((prev) => (prev.plan ? prev : { ...prev, plan: match.id }));
+  }, [plans, preselectedPlan, formData.plan]);
+
+  const selectedPlan = plans.find((p) => p.id === formData.plan) ?? plans[0];
+
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -184,7 +211,7 @@ const Cadastro = () => {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const isPaid = formData.plan !== "free";
+  const isPaid = selectedPlan ? selectedPlan.pricePix > 0 : formData.plan !== "free";
 
   const validateStep1 = (): boolean => {
     const result = registerSchema.safeParse({
@@ -229,7 +256,15 @@ const Cadastro = () => {
         sessionStorage.setItem("pendingPaymentPlan", formData.plan);
       }
 
-      const apiPlanId = formData.plan === "pro-annual" || formData.plan === "pro-monthly" ? "pro" : formData.plan;
+      // POST /v1/auth/register só aceita plan em ["free","pro","business","enterprise"] (enum fechado no backend).
+      // Planos custom criados no Admin (ex: "novo-plano") não existem nesse enum — mapeia pro tier genérico
+      // mais próximo aqui; o plano específico de verdade (com preço real) segue em formData.plan pro redirect de pagamento.
+      const REGISTER_PLAN_ENUM = ["free", "pro", "business", "enterprise"];
+      const apiPlanId = REGISTER_PLAN_ENUM.includes(formData.plan)
+        ? formData.plan
+        : (selectedPlan?.pricePix ?? 0) > 0
+          ? "pro"
+          : "free";
       await register({
         name: formData.name,
         email: formData.email,
@@ -262,10 +297,15 @@ const Cadastro = () => {
       const status = apiError?.status ?? 0;
 
       if (status === 409) {
+        const isCpf = msg === "cpf_already_registered" || /cpf/i.test(msg);
         const isPhone = /phone|telefone|celular/i.test(msg) || apiError?.code === "PHONE_ALREADY_EXISTS";
         const isEmail = /email/i.test(msg) || apiError?.code === "EMAIL_ALREADY_EXISTS";
 
-        if (isPhone) {
+        if (isCpf) {
+          toast.error("Este CPF já está cadastrado em outra conta.", { duration: 4000 });
+          setErrors((prev) => ({ ...prev, cpf: "CPF já cadastrado" }));
+          setStep(1);
+        } else if (isPhone) {
           toast.error("Este telefone já está cadastrado. Use outro número ou faça login.", { duration: 4000 });
           setErrors((prev) => ({ ...prev, phone: "Telefone já cadastrado" }));
           setStep(1);
@@ -469,7 +509,6 @@ const Cadastro = () => {
                   )}
                 </div>
 
-                {CPF_FIELD_ENABLED && (
                 <div className="space-y-2">
                   <Label htmlFor="cpf" className="text-sm font-medium text-white/80">
                     CPF <span className="text-white/40 font-normal">(opcional)</span>
@@ -506,7 +545,6 @@ const Cadastro = () => {
                     </p>
                   )}
                 </div>
-                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="birthDate" className="text-sm font-medium text-white/80">
@@ -663,73 +701,68 @@ const Cadastro = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Card do plano — igual landing page */}
-                <div
-                  className="relative rounded-3xl shadow-2xl p-6"
-                  style={{ background: "#0B1F3A", border: "1px solid rgba(27,77,191,0.31)", boxShadow: "0 25px 60px rgba(11,31,58,0.5)" }}
-                >
-                  <>
-                      <div className="flex items-center justify-center gap-3 mb-4">
-                        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border-2" style={{ borderColor: "rgba(27,77,191,0.6)", background: "rgba(27,77,191,0.2)" }}>
-                          <Crown className="w-3.5 h-3.5 text-white" />
-                          <span className="text-xs font-bold text-white uppercase tracking-wide">Plano Anual</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border-2" style={{ borderColor: "rgba(27,77,191,0.8)", background: "rgba(27,77,191,0.3)" }}>
-                          <BadgePercent className="w-3.5 h-3.5 text-[#E5E7EB]" />
-                          <span className="text-xs font-bold uppercase tracking-wide text-[#E5E7EB]">49% OFF</span>
-                        </div>
-                      </div>
+                {/* Lista de planos reais — usuário escolhe */}
+                {isPlansLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-6 h-6 text-white/40 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {plans.map((p) => {
+                      const isSelected = p.id === formData.plan;
+                      const hasCardOption = p.priceCard > p.pricePix;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, plan: p.id })}
+                          className="relative w-full text-left rounded-2xl p-5 transition-all duration-150"
+                          style={{
+                            background: "#0B1F3A",
+                            border: isSelected ? "2px solid #1B4DBF" : "1px solid rgba(27,77,191,0.25)",
+                            boxShadow: isSelected ? "0 0 24px rgba(27,77,191,0.35)" : "none",
+                          }}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <p className="text-[15px] font-bold text-white">{p.name}</p>
+                              {p.popular && (
+                                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase text-[#E5E7EB]" style={{ background: "rgba(27,77,191,0.3)" }}>
+                                  <Crown className="w-3 h-3" />
+                                  Popular
+                                </span>
+                              )}
+                            </div>
+                            <div
+                              className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0"
+                              style={{ borderColor: isSelected ? "#1B4DBF" : "rgba(255,255,255,0.3)", background: isSelected ? "#1B4DBF" : "transparent" }}
+                            >
+                              {isSelected && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                          </div>
+                          {p.description && <p className="text-xs text-white/50 mb-3">{p.description}</p>}
 
-                      <div className="flex items-center justify-center gap-2 mb-3">
-                        <p className="text-center text-[15px] font-bold text-white">
-                          Acesso completo ao <span className="text-[#E5E7EB]">Doutor Cash</span>
-                        </p>
-                        <BadgeCheck className="w-5 h-5 shrink-0 text-[#E5E7EB]" />
-                      </div>
-
-                      <p className="text-center text-sm text-white/40 line-through mb-1">De R$197,00 por</p>
-
-                      <div className="flex items-baseline justify-center gap-0.5 mb-3">
-                        <span className="text-2xl font-bold text-white">R$</span>
-                        <span className="text-6xl font-black text-white leading-none tracking-tighter">99</span>
-                        <span className="text-3xl font-black text-white">,90</span>
-                      </div>
-
-                      <div className="flex justify-center mb-3">
-                        <div className="flex items-center gap-2 px-6 py-2 rounded-full" style={{ background: "#1B4DBF", boxShadow: "0 0 20px rgba(27,77,191,0.6)" }}>
-                          <QrCode className="w-4 h-4 text-white" />
-                          <span className="text-sm font-bold text-white">à vista no PIX</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="flex-1 h-px bg-white/15" />
-                        <span className="text-xs font-semibold text-white/40 uppercase">ou</span>
-                        <div className="flex-1 h-px bg-white/15" />
-                      </div>
-
-                      <div
-                        className="rounded-2xl p-3 mb-3 text-center"
-                        style={{ background: "rgba(27,77,191,0.2)", border: "1px solid rgba(27,77,191,0.5)" }}
-                      >
-                        <p className="text-2xl font-black text-white">
-                          12x de <span className="text-[#E5E7EB]">R$ 12,90</span>
-                        </p>
-                        <p className="text-xs text-white/50 mt-0.5">Valor total: R$ 154,80 no cartão</p>
-                      </div>
-
-                      <div className="flex justify-center">
-                        <div className="flex items-center gap-2 px-5 py-1.5 rounded-full border-2" style={{ borderColor: "rgba(27,77,191,0.5)", background: "rgba(27,77,191,0.15)" }}>
-                          <TrendingUp className="w-3.5 h-3.5 text-white/70" />
-                          <span className="text-sm font-semibold text-white/80">Economia de 49%</span>
-                        </div>
-                      </div>
-                  </>
-                </div>
+                          <div className="flex items-baseline gap-1">
+                            <QrCode className="w-3.5 h-3.5 text-[#E5E7EB]" />
+                            <span className="text-2xl font-black text-white">
+                              R$ {p.pricePix.toFixed(2).replace(".", ",")}
+                            </span>
+                            <span className="text-xs text-white/40">no PIX</span>
+                          </div>
+                          {hasCardOption && (
+                            <p className="text-xs text-white/50 mt-0.5">
+                              ou R$ {p.priceCard.toFixed(2).replace(".", ",")} no cartão
+                            </p>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || !selectedPlan}
                   className="w-full h-11 rounded-xl font-bold text-white text-sm flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98] disabled:opacity-50"
                   style={{ background: "linear-gradient(135deg, #1B4DBF, #0B1F3A)", boxShadow: "0 0 20px rgba(27,77,191,0.4)" }}
                 >

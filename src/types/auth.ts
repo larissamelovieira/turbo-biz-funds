@@ -26,7 +26,7 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<User>;
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
-  updateProfile: (data: { name?: string; phone?: string }) => Promise<void>;
+  updateProfile: (data: { name?: string; phone?: string; cpf?: string | null }) => Promise<void>;
   changePassword: (data: { currentPassword: string; newPassword: string }) => Promise<void>;
   refreshUser: () => void;
   activatePro: () => void;

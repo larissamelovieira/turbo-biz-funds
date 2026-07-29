@@ -645,6 +645,7 @@ export default function AdminUsers() {
       "E-mail": u.email,
       CPF: u.cpf || "",
       Telefone: u.phone || "",
+      "Data de Nascimento": u.birthDate ? new Date(u.birthDate).toLocaleDateString("pt-BR") : "",
       Plano: u.plan,
       Status: u.status,
       "Data de Cadastro": u.createdAt ? new Date(u.createdAt).toLocaleDateString("pt-BR") : "",

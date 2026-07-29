@@ -83,7 +83,8 @@ export default function AdminPlans() {
   const [newPlan, setNewPlan] = useState<Partial<CreatePlanPayload>>({
     name: "",
     description: "",
-    price: 0,
+    pricePix: 0,
+    priceCard: 0,
     billingPeriod: "ano",
     features: [],
     popular: false,
@@ -103,7 +104,8 @@ export default function AdminPlans() {
       setEditPlanData({
         name: plan.name,
         description: plan.description,
-        price: plan.price,
+        pricePix: plan.pricePix,
+        priceCard: plan.priceCard,
         billingPeriod: plan.billingPeriod,
         features: plan.features,
         popular: plan.popular,
@@ -164,6 +166,10 @@ export default function AdminPlans() {
       toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
       return;
     }
+    if (!((newPlan.priceCard ?? 0) > (newPlan.pricePix ?? 0))) {
+      toast({ title: "Preço do cartão precisa ser maior que o preço do PIX", variant: "destructive" });
+      return;
+    }
 // Converter features para formato que o Swagger espera: { name, included }[]
     const featuresList = (newPlan.features ?? []).map((f: any) => {
       if (typeof f === 'object' && f !== null && 'name' in f) {
@@ -181,7 +187,8 @@ export default function AdminPlans() {
     const payload = {
       name: newPlan.name,
       description: newPlan.description,
-      price: newPlan.price,
+      pricePix: newPlan.pricePix,
+      priceCard: newPlan.priceCard,
       billingPeriod: newPlan.billingPeriod === "MONTHLY" ? "mês" : newPlan.billingPeriod === "YEARLY" ? "ano" : newPlan.billingPeriod,
       features: featuresList,
       popular: newPlan.popular ?? false,
@@ -191,7 +198,7 @@ export default function AdminPlans() {
       onSuccess: (res: any) => {
         toast({ title: "Plano criado com sucesso" });
         setIsCreateDialogOpen(false);
-        setNewPlan({ name: "", description: "", price: 0, billingPeriod: "ano", features: [], popular: false });
+        setNewPlan({ name: "", description: "", pricePix: 0, priceCard: 0, billingPeriod: "ano", features: [], popular: false });
         setNewFeatureInput("");
       },
       onError: (err: unknown) => {
@@ -249,7 +256,13 @@ export default function AdminPlans() {
 
   const handleUpdatePlan = () => {
     if (!editingPlanId) return;
-    
+    const effectivePricePix = editPlanData.pricePix ?? selectedPlan?.pricePix ?? 0;
+    const effectivePriceCard = editPlanData.priceCard ?? selectedPlan?.priceCard ?? 0;
+    if (!(effectivePriceCard > effectivePricePix)) {
+      toast({ title: "Preço do cartão precisa ser maior que o preço do PIX", variant: "destructive" });
+      return;
+    }
+
     // Converter features para formato que o Swagger espera: { name, included }[]
     const featuresList = (editPlanData.features ?? []).map((f: any) => {
       if (typeof f === 'object' && f !== null && 'name' in f) {
@@ -461,12 +474,17 @@ export default function AdminPlans() {
                   <CardContent className="space-y-6">
                     <div>
                       <span className="text-4xl font-bold">
-                        {plan.price === 0 ? "Grátis" : `R$ ${plan.price.toFixed(2).replace(".", ",")}`}
+                        {plan.pricePix === 0 ? "Grátis" : `R$ ${plan.pricePix.toFixed(2).replace(".", ",")}`}
                       </span>
-                      {plan.price > 0 && (
+                      {plan.pricePix > 0 && (
                         <span className="text-muted-foreground">
-                          /{plan.billingPeriod === "YEARLY" || plan.billingPeriod === "ano" ? "ano" : "mês"}
+                          /{plan.billingPeriod === "YEARLY" || plan.billingPeriod === "ano" ? "ano" : "mês"} no PIX
                         </span>
+                      )}
+                      {plan.priceCard > 0 && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          R$ {plan.priceCard.toFixed(2).replace(".", ",")} no cartão
+                        </p>
                       )}
                     </div>
 
@@ -534,29 +552,42 @@ export default function AdminPlans() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
-                        <Label htmlFor="plan-price">Preço base (R$)</Label>
+                        <Label htmlFor="plan-price-pix">Preço PIX (R$)</Label>
                         <Input
-                          id="plan-price"
+                          id="plan-price-pix"
                           type="number"
                           placeholder="0"
-                          value={newPlan.price}
-                          onChange={(e) => setNewPlan({ ...newPlan, price: Number(e.target.value) })}
+                          value={newPlan.pricePix}
+                          onChange={(e) => setNewPlan({ ...newPlan, pricePix: Number(e.target.value) })}
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="plan-period">Período</Label>
-                        <Select
-                          value={newPlan.billingPeriod}
-                          onValueChange={(value) => setNewPlan({ ...newPlan, billingPeriod: value })}
-                        >
-                          <SelectTrigger id="plan-period">
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ano">Anual</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <Label htmlFor="plan-price-card">Preço Cartão (R$)</Label>
+                        <Input
+                          id="plan-price-card"
+                          type="number"
+                          placeholder="0"
+                          value={newPlan.priceCard}
+                          onChange={(e) => setNewPlan({ ...newPlan, priceCard: Number(e.target.value) })}
+                        />
+                        <p className="text-xs text-muted-foreground">Precisa ser maior que o preço do PIX</p>
                       </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="plan-period">Período</Label>
+                      <Select
+                        value={newPlan.billingPeriod}
+                        onValueChange={(value) => setNewPlan({ ...newPlan, billingPeriod: value })}
+                      >
+                        <SelectTrigger id="plan-period">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mês">Mensal</SelectItem>
+                          <SelectItem value="semestre">Semestral</SelectItem>
+                          <SelectItem value="ano">Anual</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="grid gap-2">
@@ -732,28 +763,38 @@ export default function AdminPlans() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="edit-price">Preço base (R$)</Label>
+                    <Label htmlFor="edit-price-pix">Preço PIX (R$)</Label>
                     <Input
-                      id="edit-price"
+                      id="edit-price-pix"
                       type="number"
-                      value={editPlanData.price ?? selectedPlan.price}
-                      onChange={(e) => setEditPlanData({ ...editPlanData, price: Number(e.target.value) })}
+                      value={editPlanData.pricePix ?? selectedPlan.pricePix}
+                      onChange={(e) => setEditPlanData({ ...editPlanData, pricePix: Number(e.target.value) })}
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="edit-period">Período</Label>
-                    <Select
-                      value={editPlanData.billingPeriod ?? selectedPlan.billingPeriod}
-                      onValueChange={(value) => setEditPlanData({ ...editPlanData, billingPeriod: value })}
-                    >
-                      <SelectTrigger id="edit-period">
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ano">Anual</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="edit-price-card">Preço Cartão (R$)</Label>
+                    <Input
+                      id="edit-price-card"
+                      type="number"
+                      value={editPlanData.priceCard ?? selectedPlan.priceCard}
+                      onChange={(e) => setEditPlanData({ ...editPlanData, priceCard: Number(e.target.value) })}
+                    />
+                    <p className="text-xs text-muted-foreground">Precisa ser maior que o preço do PIX</p>
                   </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-period">Período</Label>
+                  <Select
+                    value={editPlanData.billingPeriod ?? selectedPlan.billingPeriod}
+                    onValueChange={(value) => setEditPlanData({ ...editPlanData, billingPeriod: value })}
+                  >
+                    <SelectTrigger id="edit-period">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ano">Anual</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="grid gap-2">

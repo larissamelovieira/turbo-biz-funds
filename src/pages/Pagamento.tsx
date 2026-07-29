@@ -162,6 +162,8 @@ type PaymentMethod = "cartao" | "pix";
 interface PlanDisplay {
   name: string;
   price: string | number;
+  pricePix?: number;
+  priceCard?: number;
   period: string;
   description: string;
   features: string[];
@@ -211,7 +213,15 @@ function CardForm({
   const [expiry, setExpiry] = useState("");
   const [cvv, setCvv] = useState("");
   const [cpf, setCpf] = useState(holderDocument ?? "");
-  const [installments, setInstallments] = useState(1);
+  // Default pro maior número de parcelas disponível (ex: plano anual abre já em 12x, não em 1x)
+  const [installments, setInstallments] = useState(installmentOptions[installmentOptions.length - 1] ?? 1);
+
+  useEffect(() => {
+    const maxInstallments = installmentOptions[installmentOptions.length - 1] ?? 1;
+    setInstallments(maxInstallments);
+    onInstallmentsChange?.(maxInstallments);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [installmentOptions.join(",")]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [brand, setBrand] = useState<CardBrand>(null);
   const [tokenizing, setTokenizing] = useState(false);
@@ -608,10 +618,11 @@ const Pagamento = () => {
   const [method, setMethod] = useState<PaymentMethod>("pix");
   const [selectedInstallments, setSelectedInstallments] = useState(1);
 
-  // Preços hardcoded — ignora valor retornado pela API (pode estar desatualizado)
-  const effectivePrice = isAnnualPlan
-    ? method === "pix" ? 99.9 : 154.8
-    : 99.9;
+  // Preço por método vem da API (pricePix/priceCard); só cai pro valor fixo de "price" se a API não retornar os campos novos
+  const fallbackPrice = typeof planInfo.price === "number" ? planInfo.price : 99.9;
+  const effectivePrice = method === "pix"
+    ? planInfo.pricePix ?? fallbackPrice
+    : planInfo.priceCard ?? fallbackPrice;
   const effectivePeriod = isAnnualPlan ? "/ano" : "/mês";
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
   const [isCreatingIntent, setIsCreatingIntent] = useState(false);
@@ -943,13 +954,15 @@ const Pagamento = () => {
                       Selecionado
                     </span>
                   </div>
-                  {isAnnualPlan && method === "cartao" ? (
+                  {isAnnualPlan && method === "cartao" && selectedInstallments > 1 ? (
                     <div className="mb-2">
                       <div className="flex items-baseline gap-1">
-                        <span className="text-xl sm:text-3xl font-bold text-green-400">12x de R$12,90</span>
+                        <span className="text-xl sm:text-3xl font-bold text-green-400">
+                          {selectedInstallments}x de {calcInstallment(effectivePrice, selectedInstallments)}
+                        </span>
                       </div>
                       <p className="text-xs text-green-400/70 font-medium mt-0.5">sem juros no cartão</p>
-                      <p className="text-xs text-[#94A3B8] mt-0.5">Total: R$154,80</p>
+                      <p className="text-xs text-[#94A3B8] mt-0.5">Total: {toDisplay(effectivePrice)}</p>
                     </div>
                   ) : (
                     <div className="flex items-baseline gap-1 mb-2">

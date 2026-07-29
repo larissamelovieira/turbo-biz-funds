@@ -12,7 +12,8 @@ export interface AdminPlan {
   id: string;
   name: string;
   description: string;
-  price: number;
+  pricePix: number;
+  priceCard: number;
   billingPeriod: string;
   subscribers: number;
   mrr: number;
@@ -73,6 +74,8 @@ async function fetchAdminPlans(): Promise<ApiAdminPlansResponse> {
     subscribers: p.subscribers ?? 0,
     mrr: p.mrr ?? 0,
     description: p.description ?? "",
+    pricePix: p.pricePix ?? 0,
+    priceCard: p.priceCard ?? 0,
     billingPeriod: p.billingPeriod ?? "mês",
     features: Array.isArray(p.features)
       ? p.features.map((f: any) =>
@@ -106,7 +109,8 @@ export function useAdminPlans() {
 export interface CreatePlanPayload {
   name: string;
   description: string;
-  price: number;
+  pricePix: number;
+  priceCard: number;
   billingPeriod: string;
   features: AdminPlanFeature[];
   popular?: boolean;

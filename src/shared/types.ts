@@ -79,6 +79,9 @@ export interface PlanInfo {
   id: string;
   name: string;
   price: string | number;
+  pricePix?: number;
+  priceCard?: number;
+  billingPeriod?: string;
   period: string;
   description: string;
   features: string[];
