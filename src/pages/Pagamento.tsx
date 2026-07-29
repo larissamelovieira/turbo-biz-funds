@@ -25,8 +25,7 @@ import EfiPay from "payment-token-efi";
 import { useAuth } from "@/contexts/AuthContext";
 
 const logoWeb = "/logoweb.png";
-const INSTALLMENTS_ANNUAL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-const INSTALLMENTS_MONTHLY = [1];
+const INSTALLMENTS_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 const BG = "linear-gradient(to bottom, #0B1F3A, #0B1F3A 50%, #0B1F3A)";
 
@@ -410,7 +409,7 @@ function CardForm({
         {errors.cpf && <p className="text-xs text-red-400">{errors.cpf}</p>}
       </div>
 
-      {/* Parcelamento — só exibe para planos anuais */}
+      {/* Parcelamento */}
       {installmentOptions.length > 1 && (
         <div className="space-y-1.5">
           <Label className={LABEL_CLS}>Parcelamento</Label>
@@ -613,7 +612,7 @@ const Pagamento = () => {
   };
 
   const isAnnualPlan = plan.includes("annual") || plan.includes("anual") || planInfo.period === "/ano";
-  const installmentOptions = isAnnualPlan ? INSTALLMENTS_ANNUAL : INSTALLMENTS_MONTHLY;
+  const installmentOptions = INSTALLMENTS_OPTIONS;
 
   const [method, setMethod] = useState<PaymentMethod>("pix");
   const [selectedInstallments, setSelectedInstallments] = useState(1);
