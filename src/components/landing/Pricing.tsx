@@ -28,9 +28,13 @@ function periodLabel(billingPeriod: string): string {
   return "/mês";
 }
 
+const CARD_INSTALLMENTS = 12;
+
 function PlanCard({ plan }: { plan: PublicPlan }) {
-  const { intPart, decPart } = formatPrice(plan.pricePix);
   const hasCardOption = plan.priceCard > plan.pricePix;
+  const { intPart, decPart } = formatPrice(
+    hasCardOption ? plan.priceCard / CARD_INSTALLMENTS : plan.pricePix
+  );
 
   return (
     <div
@@ -61,41 +65,38 @@ function PlanCard({ plan }: { plan: PublicPlan }) {
         <p className="text-center text-sm text-white/50 mb-4">{plan.description}</p>
       )}
 
-      {/* Preço PIX principal */}
-      <div className="flex items-baseline justify-center gap-0.5 mb-4">
+      {/* Preço principal — parcelado no cartão sem juros */}
+      <div className="flex items-baseline justify-center gap-0.5">
+        {hasCardOption && <span className="text-2xl font-bold text-white/70 mr-1">{CARD_INSTALLMENTS}x</span>}
         <span className="text-3xl font-bold text-white">R$</span>
         <span className="text-6xl font-black text-white leading-none tracking-tighter">{intPart}</span>
         <span className="text-3xl font-black text-white">,{decPart}</span>
-        <span className="text-sm text-white/40 ml-1">{periodLabel(plan.billingPeriod)}</span>
+        {!hasCardOption && <span className="text-sm text-white/40 ml-1">{periodLabel(plan.billingPeriod)}</span>}
       </div>
-
-      <div className="flex justify-center mb-4">
+      {hasCardOption && (
+        <p className="text-center text-sm text-white/50 mb-4">
+          sem juros no cartão · Valor total: R$ {plan.priceCard.toFixed(2).replace(".", ",")}
+        </p>
+      )}
+      {!hasCardOption && <div className="mb-4" />}
+      {hasCardOption && (
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex-1 h-px bg-white/15" />
+          <span className="text-xs font-semibold text-white/40 uppercase">ou</span>
+          <div className="flex-1 h-px bg-white/15" />
+        </div>
+      )}
+      <div className="flex justify-center mb-6">
         <div
           className="flex items-center gap-2 px-6 py-2.5 rounded-full"
           style={{ background: BRAND.primary, boxShadow: `0 0 20px ${BRAND.primary}60` }}
         >
           <QrCode className="w-4 h-4 text-white" />
-          <span className="text-sm font-bold text-white">à vista no PIX</span>
+          <span className="text-sm font-bold text-white">
+            {hasCardOption ? `R$ ${plan.pricePix.toFixed(2).replace(".", ",")} à vista no PIX` : "à vista no PIX"}
+          </span>
         </div>
       </div>
-
-      {hasCardOption && (
-        <>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-white/15" />
-            <span className="text-xs font-semibold text-white/40 uppercase">ou</span>
-            <div className="flex-1 h-px bg-white/15" />
-          </div>
-          <div
-            className="rounded-2xl p-3 mb-6 text-center"
-            style={{ background: `${BRAND.primary}20`, border: `1px solid ${BRAND.primary}50` }}
-          >
-            <p className="text-lg font-black text-white">
-              R$ {plan.priceCard.toFixed(2).replace(".", ",")} <span className="text-sm font-medium text-white/50">no cartão</span>
-            </p>
-          </div>
-        </>
-      )}
 
       {plan.features.length > 0 && (
         <div className="space-y-2.5 mb-6">
